@@ -21,10 +21,9 @@ Route::get('/', function () {
     return redirect()->to('/filament/login');
 });
 
-// Alias para login (por si se visita /login)
-Route::get('/login', function () {
-    return redirect('/filament/login');
-});
+// Alias para login (por si se visita /login o /admin/login)
+Route::get('/login', fn () => redirect('/filament/login'));
+Route::get('/admin/login', fn () => redirect('/filament/login'));
 
 Route::middleware(['web', 'auth'])->get('/pos', function (\Illuminate\Http\Request $request) {
     $q = trim((string) $request->query('q', ''));
