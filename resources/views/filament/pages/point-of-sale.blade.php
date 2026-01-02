@@ -1,20 +1,17 @@
 <x-filament-panels::page>
     <div class="space-y-6">
-        <div class="mx-auto flex max-w-4xl items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800">
-            <div class="flex-1">
-                <input
-                    type="text"
-                    wire:model.debounce.300ms="search"
-                    wire:keydown.enter.prevent="searchProducts"
-                    placeholder="Buscar por nombre o código de barras"
-                    class="w-full rounded-xl border-gray-300 px-4 py-3 text-lg shadow-sm focus:border-amber-500 focus:ring-amber-500 dark:border-gray-700 dark:bg-gray-800"
-                >
-                <p class="mt-1 text-xs text-gray-500">En móvil: escribe o toca Escanear para usar la cámara.</p>
-            </div>
-            <div class="flex shrink-0 gap-2">
-                <x-filament::button color="gray" wire:click="searchProducts">
-                    Buscar
-                </x-filament::button>
+        <div class="mx-auto max-w-5xl rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800">
+            <div class="flex items-center gap-3">
+                <div class="relative flex-1">
+                    <input
+                        type="text"
+                        wire:model.debounce.300ms="search"
+                        wire:keydown.enter.prevent="searchProducts"
+                        placeholder="Buscar por nombre o código de barras"
+                        class="w-full rounded-xl border-gray-300 px-5 py-4 text-lg shadow-sm focus:border-amber-500 focus:ring-amber-500 dark:border-gray-700 dark:bg-gray-800"
+                    >
+                    <p class="mt-1 text-xs text-gray-500">Búsqueda automática al escribir o escanear.</p>
+                </div>
                 <x-filament::button color="primary" icon="heroicon-m-qr-code" x-data @click="window.dispatchEvent(new Event('pos-scan'))">
                     Escanear
                 </x-filament::button>
