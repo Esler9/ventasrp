@@ -25,7 +25,7 @@ class ProductForm
                     ->maxLength(255),
                 TextInput::make('price')
                     ->label('Precio')
-                    ->prefix('$')
+                    ->prefix('Q')
                     ->numeric()
                     ->required()
                     ->rule('min:0'),

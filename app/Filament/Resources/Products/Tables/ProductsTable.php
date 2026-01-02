@@ -29,7 +29,7 @@ class ProductsTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('price')
-                    ->money('usd', true)
+                    ->money('gtq', true)
                     ->label('Precio')
                     ->sortable(),
                 TextColumn::make('stock')

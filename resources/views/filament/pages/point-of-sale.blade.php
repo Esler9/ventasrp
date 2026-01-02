@@ -30,7 +30,7 @@
                                 @endif
                             </div>
                             <div class="flex flex-col items-end gap-2">
-                                <div class="text-lg font-semibold text-gray-50">${{ number_format($product->price, 2) }}</div>
+                                <div class="text-lg font-semibold text-gray-50">Q{{ number_format($product->price, 2) }}</div>
                                 <x-filament::button color="primary" class="bg-amber-400 text-black hover:bg-amber-300" icon="heroicon-m-shopping-cart" wire:click="openConfirm({{ $product->id }})">
                                     Vender
                                 </x-filament::button>
@@ -113,7 +113,7 @@
                     </div>
                     <div class="flex justify-between rounded-lg bg-gray-800 p-3 text-sm font-semibold text-gray-100">
                         <span>Total</span>
-                        <span>${{ number_format((float) $confirmPrice * (int) $confirmQuantity, 2) }}</span>
+                        <span>Q{{ number_format((float) $confirmPrice * (int) $confirmQuantity, 2) }}</span>
                     </div>
                 </div>
 

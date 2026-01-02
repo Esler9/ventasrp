@@ -24,7 +24,7 @@ class SalesTable
                     ->sortable(),
                 TextColumn::make('total')
                     ->label('Total')
-                    ->money('usd', true)
+                    ->money('gtq', true)
                     ->sortable(),
                 TextColumn::make('created_at')
                     ->label('Fecha')
