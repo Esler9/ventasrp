@@ -18,11 +18,12 @@ Route::get('/', function () {
         return redirect()->to('/admin');
     }
 
-    if (Route::has('login')) {
-        return redirect()->route('login');
-    }
+    return redirect()->to('/filament/login');
+});
 
-    return redirect()->to('/admin/login');
+// Alias para login (por si se visita /login)
+Route::get('/login', function () {
+    return redirect('/filament/login');
 });
 
 Route::middleware(['web', 'auth'])->get('/pos', function (\Illuminate\Http\Request $request) {
