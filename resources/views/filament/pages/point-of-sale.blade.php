@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="mx-auto max-w-6xl space-y-6">
+    <div class="mx-auto max-w-6xl space-y-6 px-2 sm:px-0">
         <div class="rounded-3xl bg-white p-4 shadow-lg ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div class="relative flex-1">
@@ -18,67 +18,29 @@
         </div>
 
         <div class="rounded-3xl bg-white shadow-lg ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800">
-            <div class="hidden md:block overflow-x-auto">
-                <table class="w-full text-sm text-gray-800 dark:text-gray-100">
-                    <thead class="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                        <tr>
-                            <th class="px-4 py-3 text-left">Nombre</th>
-                            <th class="px-4 py-3 text-left">SKU</th>
-                            <th class="px-4 py-3 text-left">Precio</th>
-                            <th class="px-4 py-3 text-left">Stock</th>
-                            <th class="px-4 py-3 text-left">Vence</th>
-                            <th class="px-4 py-3 text-right">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                        @forelse ($results as $product)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/70">
-                                <td class="px-4 py-3 font-semibold">{{ $product->name }}</td>
-                                <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ $product->sku }}</td>
-                                <td class="px-4 py-3 font-semibold text-amber-600 dark:text-amber-400">${{ number_format($product->price, 2) }}</td>
-                                <td class="px-4 py-3">{{ $product->stock }}</td>
-                                <td class="px-4 py-3 text-gray-600 dark:text-gray-300">
-                                    @if($product->expires_at)
-                                        {{ \Illuminate\Support\Carbon::parse($product->expires_at)->toDateString() }}
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    <x-filament::button color="primary" size="sm" wire:click="openConfirm({{ $product->id }})">
-                                        Vender
-                                    </x-filament::button>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="px-4 py-6 text-center text-sm text-gray-500">Sin productos. Busca otro término o crea uno nuevo.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="grid gap-3 p-3 md:hidden">
+            <div class="divide-y divide-gray-100 p-4 dark:divide-gray-800">
                 @forelse ($results as $product)
-                    <div class="rounded-2xl border border-gray-100 p-4 shadow-sm dark:border-gray-800">
-                        <div class="flex items-start justify-between">
-                            <div>
-                                <div class="text-base font-semibold text-gray-900 dark:text-gray-50">{{ $product->name }}</div>
-                                <div class="text-xs text-gray-500">SKU: {{ $product->sku }}</div>
-                                @if($product->expires_at)
-                                    <div class="text-xs text-red-500">Vence: {{ \Illuminate\Support\Carbon::parse($product->expires_at)->toDateString() }}</div>
-                                @endif
-                                <div class="mt-1 text-xs text-gray-500">Stock: {{ $product->stock }}</div>
-                                <div class="text-sm font-bold text-amber-600 dark:text-amber-400">${{ number_format($product->price, 2) }}</div>
-                            </div>
+                    <div class="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="space-y-1">
+                            <div class="text-base font-semibold text-gray-900 dark:text-gray-50">{{ $product->name }}</div>
+                            <div class="text-xs text-gray-500">SKU: {{ $product->sku }}</div>
+                            @if($product->expires_at)
+                                <div class="text-xs text-red-500">Vence: {{ \Illuminate\Support\Carbon::parse($product->expires_at)->toDateString() }}</div>
+                            @endif
+                            <div class="text-xs text-gray-500">Stock: {{ $product->stock }}</div>
+                            <div class="text-sm font-bold text-amber-600 dark:text-amber-400">${{ number_format($product->price, 2) }}</div>
+                        </div>
+                        <div class="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-3">
+                            <span class="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                                {{ $product->stock }} en stock
+                            </span>
                             <x-filament::button color="primary" size="sm" wire:click="openConfirm({{ $product->id }})">
                                 Vender
                             </x-filament::button>
                         </div>
                     </div>
                 @empty
-                    <div class="px-4 py-6 text-center text-sm text-gray-500">Sin productos. Busca otro término o crea uno nuevo.</div>
+                    <div class="py-6 text-center text-sm text-gray-500">Sin productos. Busca otro término o crea uno nuevo.</div>
                 @endforelse
             </div>
         </div>
