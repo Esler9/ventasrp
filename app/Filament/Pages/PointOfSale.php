@@ -25,6 +25,7 @@ class PointOfSale extends Page
 
     protected string $view = 'filament.pages.point-of-sale';
 
+    public ?string $busqueda = '';
     public ?string $search = '';
     public Collection $results;
     public array $confirmProduct = [];
@@ -35,6 +36,7 @@ class PointOfSale extends Page
 
     public function mount(): void
     {
+        $this->search = $this->busqueda;
         $this->searchProducts();
     }
 
@@ -52,21 +54,28 @@ class PointOfSale extends Page
 
     public function searchProducts(): void
     {
-        $query = trim((string) $this->search);
+        $this->search = $this->busqueda;
+        $query = trim((string) $this->busqueda);
 
-        $this->results = Product::query()
+        $this->results = $this->productos;
+    }
+
+    public function getProductosProperty(): Collection
+    {
+        $query = trim((string) $this->busqueda);
+
+        return Product::query()
             ->where('is_active', true)
             ->when($query !== '', function ($builder) use ($query) {
-                $builder
-                    ->where(function ($subQuery) use ($query) {
-                        $subQuery
-                            ->where('name', 'like', '%' . $query . '%')
-                            ->orWhere('sku', 'like', '%' . $query . '%');
-                    });
+                $builder->where(function ($subQuery) use ($query) {
+                    $subQuery
+                        ->where('name', 'like', '%' . $query . '%')
+                        ->orWhere('sku', 'like', '%' . $query . '%');
+                });
             })
             ->orderBy('name')
             ->limit(20)
-            ->get(['id', 'name', 'sku', 'price', 'stock']);
+            ->get(['id', 'name', 'sku', 'price', 'stock', 'expires_at']);
     }
 
     public function openConfirm(int $productId): void
