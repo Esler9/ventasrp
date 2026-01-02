@@ -1,18 +1,18 @@
 <x-filament-panels::page>
     <div class="space-y-6">
         <div class="mx-auto max-w-5xl rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800">
-            <div class="flex items-center gap-3">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div class="relative flex-1">
                     <input
                         type="text"
-                        wire:model.debounce.300ms="search"
+                        wire:model.debounce.250ms="search"
                         wire:keydown.enter.prevent="searchProducts"
                         placeholder="Buscar por nombre o código de barras"
-                        class="w-full rounded-xl border-gray-300 px-5 py-4 text-lg shadow-sm focus:border-amber-500 focus:ring-amber-500 dark:border-gray-700 dark:bg-gray-800"
+                        class="w-full rounded-2xl border-2 border-gray-200 px-5 py-4 text-lg shadow-sm focus:border-amber-500 focus:ring-amber-500 dark:border-gray-700 dark:bg-gray-800"
                     >
                     <p class="mt-1 text-xs text-gray-500">Búsqueda automática al escribir o escanear.</p>
                 </div>
-                <x-filament::button color="primary" icon="heroicon-m-qr-code" x-data @click="window.dispatchEvent(new Event('pos-scan'))">
+                <x-filament::button color="primary" icon="heroicon-m-qr-code" size="lg" class="w-full sm:w-auto" x-data @click="window.dispatchEvent(new Event('pos-scan'))">
                     Escanear
                 </x-filament::button>
             </div>
@@ -23,7 +23,8 @@
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Resultados</h2>
                 <span class="text-xs text-gray-500">{{ $results->count() }} ítems</span>
             </div>
-            <div class="overflow-x-auto">
+
+            <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-sm text-gray-800 dark:text-gray-100">
                     <thead class="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                         <tr>
@@ -62,6 +63,29 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            <div class="block md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                @forelse ($results as $product)
+                    <div class="p-4">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="text-base font-semibold text-gray-900 dark:text-gray-50">{{ $product->name }}</div>
+                                <div class="text-xs text-gray-500">SKU: {{ $product->sku }}</div>
+                                @if($product->expires_at)
+                                    <div class="text-xs text-red-500">Vence: {{ \Illuminate\Support\Carbon::parse($product->expires_at)->toDateString() }}</div>
+                                @endif
+                                <div class="mt-1 text-xs text-gray-500">Stock: {{ $product->stock }}</div>
+                                <div class="text-sm font-bold text-amber-600 dark:text-amber-400">${{ number_format($product->price, 2) }}</div>
+                            </div>
+                            <x-filament::button color="primary" size="sm" wire:click="openConfirm({{ $product->id }})">
+                                Vender
+                            </x-filament::button>
+                        </div>
+                    </div>
+                @empty
+                    <div class="px-4 py-6 text-center text-sm text-gray-500">Sin productos. Busca otro término o crea uno nuevo.</div>
+                @endforelse
             </div>
         </div>
     </div>
