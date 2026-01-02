@@ -142,23 +142,40 @@
         </nav>
 
         <div
-            v-if="showModal && selectedProduct"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        >
-            <div class="w-full max-w-md rounded-2xl bg-gray-900 p-5 shadow-2xl ring-1 ring-black/30 text-gray-100">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <h3 class="text-lg font-semibold">Confirmar venta</h3>
-                        <p class="text-sm text-gray-400">{{ selectedProduct.name }} · SKU: {{ selectedProduct.sku }}</p>
-                        <p class="text-xs text-gray-500">Stock disponible: {{ selectedProduct.stock }}</p>
-                        <p v-if="selectedProduct.expires_at" class="text-xs text-amber-300">Vence: {{ selectedProduct.expires_at }}</p>
+        v-if="showModal && selectedProduct"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+    >
+        <div class="w-full max-w-md rounded-2xl bg-gray-900 p-5 shadow-2xl ring-1 ring-black/30 text-gray-100">
+            <div class="flex items-start gap-3">
+                <div class="h-14 w-14 rounded-xl bg-gray-850 overflow-hidden ring-1 ring-black/30 flex-shrink-0">
+                    <img
+                        v-if="selectedProduct.photo_url"
+                        :src="selectedProduct.photo_url"
+                        alt="Foto"
+                        class="h-full w-full object-cover"
+                    />
+                    <div v-else class="flex h-full w-full items-center justify-center text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m3 7 6 6m0 0 4-4 8 8M13 13h6v6M3 5h6v6" />
+                        </svg>
                     </div>
-                    <button type="button" class="text-gray-400 hover:text-white" @click="closeModal">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
                 </div>
+                <div class="flex-1">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold">Confirmar venta</h3>
+                            <p class="text-sm text-gray-400">{{ selectedProduct.name }} · SKU: {{ selectedProduct.sku }}</p>
+                            <p class="text-xs text-gray-500">Stock disponible: {{ selectedProduct.stock }}</p>
+                            <p v-if="selectedProduct.expires_at" class="text-xs text-amber-300">Vence: {{ selectedProduct.expires_at }}</p>
+                        </div>
+                        <button type="button" class="text-gray-400 hover:text-white" @click="closeModal">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-                <div class="mt-4 space-y-3">
+            <div class="mt-4 space-y-3">
                     <div>
                         <label class="text-sm font-semibold text-gray-200">Cantidad</label>
                         <input
