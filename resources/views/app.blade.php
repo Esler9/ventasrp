@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    @routes
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha384-Piv4xVNRyMGpqkM0Myd7sQJ2DqJE50E+I4QJ9bAQQ4K5j0vvVuv5QW7HQwZ0p5Gy" crossorigin="anonymous">
     @vite('resources/js/pos-app.js')
     @inertiaHead
 </head>

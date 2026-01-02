@@ -9,6 +9,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -20,6 +21,12 @@ class ProductsTable
     {
         return $table
             ->columns([
+                ImageColumn::make('photo')
+                    ->label('Foto')
+                    ->disk('public')
+                    ->square()
+                    ->defaultImageUrl(fn () => null)
+                    ->height('40'),
                 TextColumn::make('name')
                     ->label('Nombre')
                     ->searchable()
