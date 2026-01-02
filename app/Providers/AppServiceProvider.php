@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use Filament\Support\Facades\FilamentView;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        FilamentView::registerRenderHook(
+            'body.end',
+            function () {
+                // Solo en panel Filament y en pantallas pequeñas.
+                if (! Route::is('filament.*')) {
+                    return '';
+                }
+
+                return view('filament.partials.mobile-nav');
+            }
+        );
     }
 }

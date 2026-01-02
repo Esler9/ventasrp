@@ -26,7 +26,7 @@ class ProductsTable
                     ->disk('public_products')
                     ->square()
                     ->defaultImageUrl(fn () => null)
-                    ->height('40'),
+                    ->height('32'),
                 TextColumn::make('name')
                     ->label('Nombre')
                     ->searchable()
