@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\AppSetting;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -16,6 +17,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        AppSetting::firstOrCreate([], [
+            'app_icon_color' => '#f59e0b',
+        ]);
+
         User::updateOrCreate(
             ['email' => 'admin@example.com'],
             [
