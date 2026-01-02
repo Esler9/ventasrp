@@ -30,6 +30,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->homeUrl('/admin/point-of-sale')
             ->colors([
                 'primary' => Color::Amber,
             ])
