@@ -18,6 +18,7 @@ class ProductForm
                 FileUpload::make('photo')
                     ->label('Foto')
                     ->image()
+                    ->disk('public')
                     ->directory('products')
                     ->visibility('public')
                     ->imageEditor()
