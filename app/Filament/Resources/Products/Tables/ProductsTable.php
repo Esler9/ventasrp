@@ -23,7 +23,7 @@ class ProductsTable
             ->columns([
                 ImageColumn::make('photo')
                     ->label('Foto')
-                    ->disk('public')
+                    ->disk('public_products')
                     ->square()
                     ->defaultImageUrl(fn () => null)
                     ->height('40'),

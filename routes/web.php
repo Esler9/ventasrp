@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\PosController;
 use App\Models\Product;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 if (! function_exists('handlePosSale')) {
     function handlePosSale(Request $request) {
@@ -91,7 +91,16 @@ Route::middleware(['web', 'auth'])->get('/pos', function (\Illuminate\Http\Reque
         ->limit(20)
         ->get()
         ->map(function ($product) {
-            $product->photo_url = $product->photo ? asset('storage/' . ltrim($product->photo, '/')) : null;
+            $path = ltrim((string) $product->photo, '/');
+
+            if ($path === '') {
+                $product->photo_url = null;
+            } elseif (Str::startsWith($path, 'products/')) {
+                $product->photo_url = asset($path);
+            } else {
+                $product->photo_url = asset('products/' . $path);
+            }
+
             return $product;
         });
 
@@ -123,7 +132,16 @@ Route::middleware(['web', 'auth'])->get('/admin/point-of-sale', function (\Illum
         ->limit(20)
         ->get()
         ->map(function ($product) {
-            $product->photo_url = $product->photo ? asset('storage/' . ltrim($product->photo, '/')) : null;
+            $path = ltrim((string) $product->photo, '/');
+
+            if ($path === '') {
+                $product->photo_url = null;
+            } elseif (Str::startsWith($path, 'products/')) {
+                $product->photo_url = asset($path);
+            } else {
+                $product->photo_url = asset('products/' . $path);
+            }
+
             return $product;
         });
 

@@ -60,6 +60,15 @@ return [
             'report' => false,
         ],
 
+        'public_products' => [
+            'driver' => 'local',
+            'root' => public_path('products'),
+            'url' => env('APP_URL').'/products',
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*
