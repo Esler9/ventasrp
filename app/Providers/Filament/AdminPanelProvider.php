@@ -29,10 +29,8 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            // No descubrimos páginas/widgets para evitar navegar Filament
+            // Solo recursos (opcional); no descubrimos páginas/widgets para evitar navegación en Filament.
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
-            ->discoverPages(in: [], for: 'App\Filament\Pages')
-            ->discoverWidgets(in: [], for: 'App\Filament\Widgets')
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
