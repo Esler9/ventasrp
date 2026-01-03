@@ -128,17 +128,42 @@
                 <h3 class="text-lg font-semibold">Escanear código</h3>
                 <button type="button" class="text-sm text-gray-300 underline" @click="stopScanner">Cerrar</button>
             </div>
-            <div class="relative flex-1 rounded-2xl border border-gray-800 bg-black overflow-hidden">
+            <div v-if="!fallbackManual" class="relative flex-1 rounded-2xl border border-gray-800 bg-black overflow-hidden">
                 <video ref="videoRef" class="h-full w-full object-cover" autoplay playsinline muted></video>
                 <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <div class="h-32 w-64 rounded-xl border-2 border-amber-400/80"></div>
                 </div>
             </div>
+            <div v-else class="space-y-3">
+                <p class="text-sm text-gray-200">Ingresa el código manualmente</p>
+                <input
+                    v-model="search"
+                    type="text"
+                    inputmode="numeric"
+                    autofocus
+                    class="w-full rounded-xl border border-gray-800 bg-gray-950/80 px-3 py-3 text-lg text-gray-100 focus:border-amber-400 focus:ring-amber-400"
+                    placeholder="Ej. 7501234567890"
+                />
+                <button
+                    type="button"
+                    class="w-full rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black shadow hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    @click="applyManualSearch"
+                >
+                    Buscar
+                </button>
+            </div>
             <p v-if="scannerError" class="text-sm text-red-400">{{ scannerError }}</p>
             <p class="text-xs text-gray-400">Apunta al código de barras, se llenará la búsqueda automáticamente.</p>
-            <div v-if="scannerError" class="text-xs text-gray-500">
-                Si no ves la cámara, revisa permisos en Safari (Ajustes &gt; Safari &gt; Cámara) o usa el buscador manual.
+            <div class="text-xs text-gray-500">
+                Si no ves la cámara en Safari, revisa permisos (Ajustes &gt; Safari &gt; Cámara) o usa el ingreso manual.
             </div>
+            <button
+                type="button"
+                class="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-100 hover:bg-gray-800"
+                @click="stopScanner"
+            >
+                Cerrar
+            </button>
         </div>
 
         <div
@@ -257,6 +282,7 @@ const toastMessage = ref('Venta registrada');
 const showScanner = ref(false);
 const scannerError = ref('');
 const videoRef = ref(null);
+const fallbackManual = ref(false);
 let mediaStream = null;
 let detector = null;
 
@@ -303,12 +329,14 @@ const formatPrice = (val) => Number(val ?? 0).toFixed(2);
 const startScanner = async () => {
     scannerError.value = '';
     showScanner.value = true;
+    fallbackManual.value = false;
     if (!navigator.mediaDevices?.getUserMedia) {
         scannerError.value = 'Tu dispositivo no permite acceso a cámara.';
         return;
     }
     if (!('BarcodeDetector' in window)) {
-        scannerError.value = 'Tu navegador no soporta escaneo nativo. Usa el buscador manual o actualiza tu navegador.';
+        scannerError.value = 'Safari no soporta escaneo nativo. Usa el ingreso manual.';
+        fallbackManual.value = true;
         return;
     }
     try {
@@ -398,6 +426,16 @@ const contentSafeArea = computed(() => ({
 const logoutForm = useForm({});
 const logout = () => {
     logoutForm.post('/logout');
+};
+
+const applyManualSearch = () => {
+    showScanner.value = false;
+    if (search.value) {
+        debouncedSearch(search.value);
+        toastMessage.value = `Código: ${search.value}`;
+        showToast.value = true;
+        setTimeout(() => (showToast.value = false), 1600);
+    }
 };
 
 onBeforeUnmount(() => {
