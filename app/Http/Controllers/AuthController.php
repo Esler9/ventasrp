@@ -31,8 +31,8 @@ class AuthController extends Controller
 
             /** @var User|null $user */
             $user = User::query()
-                ->where('email', $data['username'])
-                ->orWhere('name', $data['username'])
+                ->where('username', $data['username'])
+                ->orWhere('email', $data['username'])
                 ->first();
 
             if (! $user || $user->pin === null || ! Hash::check($data['pin'], (string) $user->pin)) {

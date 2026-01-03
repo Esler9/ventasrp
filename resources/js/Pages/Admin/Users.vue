@@ -23,6 +23,17 @@
                         />
                     </div>
                     <div class="space-y-1 sm:col-span-1">
+                        <label class="text-sm text-gray-300">Usuario</label>
+                        <input
+                            v-model="form.username"
+                            type="text"
+                            autocomplete="username"
+                            class="w-full rounded-xl border border-gray-800 bg-gray-950/80 px-3 py-3 text-sm text-gray-100 placeholder-gray-500 focus:border-amber-400 focus:ring-amber-400"
+                            required
+                        />
+                        <p class="text-xs text-gray-500">Usa este usuario con PIN para entrar rápido.</p>
+                    </div>
+                    <div class="space-y-1 sm:col-span-1">
                         <label class="text-sm text-gray-300">Correo</label>
                         <input
                             v-model="form.email"
@@ -106,7 +117,8 @@
                         </span>
                     </div>
                     <div class="mt-3 space-y-1 text-sm text-gray-300">
-                        <p class="text-gray-400">Usuario: <span class="text-gray-200">{{ user.email }}</span></p>
+                        <p class="text-gray-400">Usuario: <span class="text-gray-200">{{ user.username || 'Sin usuario' }}</span></p>
+                        <p class="text-gray-400">Correo: <span class="text-gray-200">{{ user.email }}</span></p>
                         <p class="text-gray-400">PIN configurado: <span class="text-gray-200">{{ user.has_pin ? 'Sí' : 'No' }}</span></p>
                     </div>
                     <button
@@ -148,6 +160,7 @@ const users = props.users.map((user) => ({
 const form = useForm({
     id: null,
     name: '',
+    username: '',
     email: '',
     role: 'seller',
     password: '',
@@ -161,6 +174,7 @@ const firstError = computed(() => Object.values(form.errors)[0]);
 const startEdit = (user) => {
     form.id = user.id;
     form.name = user.name;
+    form.username = user.username || '';
     form.email = user.email;
     form.role = user.role;
     form.password = '';
@@ -171,6 +185,7 @@ const startEdit = (user) => {
 const startCreate = () => {
     form.id = null;
     form.name = '';
+    form.username = '';
     form.email = '';
     form.role = 'seller';
     form.password = '';
@@ -181,6 +196,7 @@ const startCreate = () => {
 const submit = () => {
     const payload = {
         name: form.name,
+        username: form.username,
         email: form.email,
         role: form.role,
         password: isEditing.value ? (form.password || null) : form.password,

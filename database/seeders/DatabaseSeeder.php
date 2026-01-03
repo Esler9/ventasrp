@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'admin@example.com'],
             [
                 'name' => 'Admin',
+                'username' => 'admin',
                 'role' => 'admin',
                 'password' => Hash::make('1234'),
                 'pin' => Hash::make('1234'),
@@ -35,6 +36,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'vendedor@example.com'],
             [
                 'name' => 'Vendedor',
+                'username' => 'vendedor',
                 'role' => 'seller',
                 'password' => Hash::make('1234'),
                 'pin' => Hash::make('1234'),
