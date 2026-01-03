@@ -136,6 +136,9 @@
             </div>
             <p v-if="scannerError" class="text-sm text-red-400">{{ scannerError }}</p>
             <p class="text-xs text-gray-400">Apunta al código de barras, se llenará la búsqueda automáticamente.</p>
+            <div v-if="scannerError" class="text-xs text-gray-500">
+                Si no ves la cámara, revisa permisos en Safari (Ajustes &gt; Safari &gt; Cámara) o usa el buscador manual.
+            </div>
         </div>
 
         <div
@@ -299,18 +302,18 @@ const formatPrice = (val) => Number(val ?? 0).toFixed(2);
 
 const startScanner = async () => {
     scannerError.value = '';
+    showScanner.value = true;
     if (!navigator.mediaDevices?.getUserMedia) {
         scannerError.value = 'Tu dispositivo no permite acceso a cámara.';
         return;
     }
     if (!('BarcodeDetector' in window)) {
-        scannerError.value = 'Tu navegador no soporta escaneo nativo.';
+        scannerError.value = 'Tu navegador no soporta escaneo nativo. Usa el buscador manual o actualiza tu navegador.';
         return;
     }
     try {
         detector = new window.BarcodeDetector({ formats: ['code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39'] });
         mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-        showScanner.value = true;
         await nextTick();
         if (videoRef.value) {
             videoRef.value.srcObject = mediaStream;
@@ -318,8 +321,8 @@ const startScanner = async () => {
             requestAnimationFrame(scanFrame);
         }
     } catch (e) {
-        scannerError.value = 'No se pudo acceder a la cámara (revisa permisos).';
-        stopScanner();
+        scannerError.value = 'No se pudo acceder a la cámara (revisa permisos en el navegador).';
+        stopScanner(true);
     }
 };
 
@@ -349,8 +352,8 @@ const scanFrame = async () => {
     }
 };
 
-const stopScanner = () => {
-    showScanner.value = false;
+const stopScanner = (keepOverlay = false) => {
+    showScanner.value = keepOverlay;
     if (mediaStream) {
         mediaStream.getTracks().forEach((t) => t.stop());
         mediaStream = null;
