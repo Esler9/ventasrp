@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,17 +21,40 @@ class AuthController extends Controller
 
     public function login(Request $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-        ]);
+        $method = $request->input('method', 'password');
 
-        $remember = (bool) $request->boolean('remember');
+        if ($method === 'pin') {
+            $data = $request->validate([
+                'username' => ['required', 'string'],
+                'pin' => ['required', 'string'],
+            ]);
 
-        if (! Auth::attempt($credentials, $remember)) {
-            return back()->withErrors([
-                'email' => 'Credenciales inválidas.',
-            ])->onlyInput('email');
+            /** @var User|null $user */
+            $user = User::query()
+                ->where('email', $data['username'])
+                ->orWhere('name', $data['username'])
+                ->first();
+
+            if (! $user || $user->pin === null || ! Hash::check($data['pin'], (string) $user->pin)) {
+                return back()->withErrors([
+                    'username' => 'Credenciales inválidas.',
+                ])->onlyInput('username');
+            }
+
+            Auth::login($user, false);
+        } else {
+            $credentials = $request->validate([
+                'email' => ['required', 'email'],
+                'password' => ['required', 'string'],
+            ]);
+
+            $remember = (bool) $request->boolean('remember');
+
+            if (! Auth::attempt($credentials, $remember)) {
+                return back()->withErrors([
+                    'email' => 'Credenciales inválidas.',
+                ])->onlyInput('email');
+            }
         }
 
         $request->session()->regenerate();

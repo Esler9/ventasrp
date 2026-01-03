@@ -5,6 +5,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\AuthController;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -92,4 +93,16 @@ Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
 
     Route::post('/point-of-sale/sales', [PosController::class, 'store'])->name('admin.pos.sales');
+
+    Route::get('/users', function () {
+        $users = User::query()
+            ->select(['id', 'name', 'email', 'role'])
+            ->selectRaw('pin IS NOT NULL as has_pin')
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('Admin/Users', [
+            'users' => $users,
+        ]);
+    })->name('admin.users.index');
 });

@@ -1,6 +1,6 @@
 <template>
-    <nav class="fixed inset-x-0 bottom-0 z-40 bg-gray-900/95 backdrop-blur border-t border-gray-800">
-        <div class="mx-auto flex max-w-6xl items-center justify-around px-4 py-3 text-xs text-gray-300">
+    <nav class="fixed inset-x-0 bottom-0 z-40 bg-gray-900/95 backdrop-blur border-t border-gray-800" :style="safeAreaStyle">
+        <div class="mx-auto flex max-w-6xl items-center justify-around px-4 pt-3 pb-4 text-xs text-gray-300">
             <a :href="routes.pos" class="flex flex-col items-center gap-1" :class="isActive('pos')">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M5 7l1 12h12l1-12M9 11v2m6-2v2" />
@@ -33,6 +33,7 @@
 
 <script setup>
 import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const page = usePage();
 
@@ -50,4 +51,8 @@ const isActive = (key) => {
     if (key === 'sales') return path.startsWith('/admin/sales');
     return path === '/admin';
 };
+
+const safeAreaStyle = computed(() => ({
+    paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))',
+}));
 </script>
