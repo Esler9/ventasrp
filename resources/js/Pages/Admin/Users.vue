@@ -208,7 +208,10 @@ const submit = () => {
     };
 
     if (isEditing.value) {
-        form.transform(() => payload).put(`/admin/users/${form.id}`, { onSuccess });
+        form.transform(() => ({
+            ...payload,
+            _method: 'PUT',
+        })).post(`/admin/users/${form.id}`, { onSuccess });
     } else {
         form.transform(() => payload).post('/admin/users', { onSuccess });
     }

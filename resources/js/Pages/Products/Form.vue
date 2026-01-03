@@ -126,7 +126,10 @@ const onFileChange = (event) => {
 
 const submit = () => {
     if (props.product) {
-        form.put(`/admin/products/${props.product.id}`, {
+        form.transform((data) => ({
+            ...data,
+            _method: 'PUT',
+        })).post(`/admin/products/${props.product.id}`, {
             preserveScroll: true,
             forceFormData: true,
         });
