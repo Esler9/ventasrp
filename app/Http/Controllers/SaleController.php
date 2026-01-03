@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SaleItem;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -11,10 +12,33 @@ class SaleController extends Controller
 {
     public function index(Request $request): Response
     {
-        $items = SaleItem::query()
+        $q = trim((string) $request->query('q', ''));
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+        $sellerId = $request->query('seller_id');
+
+        $query = SaleItem::query()
             ->with(['product', 'sale.seller'])
-            ->latest()
+            ->when($q !== '', function ($builder) use ($q) {
+                $builder->whereHas('product', function ($product) use ($q) {
+                    $product->where('name', 'like', "%{$q}%")
+                        ->orWhere('sku', 'like', "%{$q}%");
+                });
+            })
+            ->when($dateFrom, function ($builder) use ($dateFrom) {
+                $builder->whereHas('sale', fn ($sale) => $sale->whereDate('created_at', '>=', $dateFrom));
+            })
+            ->when($dateTo, function ($builder) use ($dateTo) {
+                $builder->whereHas('sale', fn ($sale) => $sale->whereDate('created_at', '<=', $dateTo));
+            })
+            ->when($sellerId, function ($builder) use ($sellerId) {
+                $builder->whereHas('sale', fn ($sale) => $sale->where('seller_id', $sellerId));
+            })
+            ->latest();
+
+        $items = $query
             ->paginate(20)
+            ->appends($request->query())
             ->through(fn ($item) => [
                 'id' => $item->id,
                 'product' => $item->product?->name,
@@ -27,8 +51,33 @@ class SaleController extends Controller
                 'created_at' => optional($item->created_at)->toDateTimeString(),
             ]);
 
+        $totals = (clone $query)
+            ->selectRaw('sum(quantity * unit_price) as revenue')
+            ->selectRaw('sum(discount_amount) as discounts')
+            ->selectRaw('sum(quantity) as units')
+            ->selectRaw('count(*) as lines')
+            ->first();
+
+        $sellers = User::query()
+            ->whereIn('role', ['admin', 'seller'])
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return Inertia::render('Sales/Index', [
             'items' => $items,
+            'filters' => [
+                'q' => $q,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'seller_id' => $sellerId,
+            ],
+            'summary' => [
+                'revenue' => (float) $totals->revenue,
+                'discounts' => (float) $totals->discounts,
+                'units' => (int) $totals->units,
+                'lines' => (int) $totals->lines,
+            ],
+            'sellers' => $sellers,
         ]);
     }
 }
