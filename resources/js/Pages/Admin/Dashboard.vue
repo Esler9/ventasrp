@@ -1,7 +1,7 @@
 <template>
     <AppLayout title="Panel">
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-2xl bg-gray-900/60 p-4 ring-1 ring-black/30">
+            <div class="rounded-2xl bg-gray-900/60 p-4 ring-1 ring-black/30 hover-lift fade-in-soft">
                 <p class="text-sm text-gray-400">Pos</p>
                 <p class="mt-2 text-2xl font-semibold text-gray-50">Vender rápido</p>
                 <p class="mt-1 text-xs text-gray-500">Accede al punto de venta</p>
@@ -9,7 +9,7 @@
                     Ir a POS
                 </a>
             </div>
-            <div class="rounded-2xl bg-gray-900/60 p-4 ring-1 ring-black/30">
+            <div class="rounded-2xl bg-gray-900/60 p-4 ring-1 ring-black/30 hover-lift fade-in-soft">
                 <p class="text-sm text-gray-400">Inventario</p>
                 <p class="mt-2 text-2xl font-semibold text-gray-50">Productos</p>
                 <p class="mt-1 text-xs text-gray-500">Gestiona precios, stock y fotos</p>
@@ -17,7 +17,7 @@
                     Ver productos
                 </a>
             </div>
-            <div class="rounded-2xl bg-gray-900/60 p-4 ring-1 ring-black/30">
+            <div class="rounded-2xl bg-gray-900/60 p-4 ring-1 ring-black/30 hover-lift fade-in-soft">
                 <p class="text-sm text-gray-400">Ventas</p>
                 <p class="mt-2 text-2xl font-semibold text-gray-50">Historial</p>
                 <p class="mt-1 text-xs text-gray-500">Consulta ventas y descuentos</p>
@@ -25,7 +25,7 @@
                     Ver ventas
                 </a>
             </div>
-            <div class="rounded-2xl bg-gray-900/60 p-4 ring-1 ring-black/30">
+            <div class="rounded-2xl bg-gray-900/60 p-4 ring-1 ring-black/30 hover-lift fade-in-soft">
                 <p class="text-sm text-gray-400">Usuarios</p>
                 <p class="mt-2 text-2xl font-semibold text-gray-50">Equipo y accesos</p>
                 <p class="mt-1 text-xs text-gray-500">Gestiona quién puede entrar y sus PIN</p>

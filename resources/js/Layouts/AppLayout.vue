@@ -1,6 +1,6 @@
 <template>
     <div class="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
-        <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur">
+        <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur fade-in-soft">
             <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
                 <div class="space-y-1">
                     <p class="text-xs uppercase tracking-wide text-gray-500">Panel</p>
@@ -10,7 +10,7 @@
             </div>
         </header>
 
-        <main class="flex-1 mx-auto w-full max-w-6xl px-4 py-6 pb-24">
+        <main class="flex-1 mx-auto w-full max-w-6xl px-4 py-6 pb-24 fade-in-soft">
             <slot />
         </main>
 
