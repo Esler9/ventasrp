@@ -159,8 +159,8 @@ const props = defineProps({
 
 const filtersForm = reactive({
     q: props.filters.q || '',
-    date_from: props.filters.date_from || '',
-    date_to: props.filters.date_to || '',
+    date_from: props.filters.date_from || new Date().toISOString().slice(0, 10),
+    date_to: props.filters.date_to || new Date().toISOString().slice(0, 10),
     seller_id: props.filters.seller_id || '',
 });
 

@@ -13,8 +13,9 @@ class SaleController extends Controller
     public function index(Request $request): Response
     {
         $q = trim((string) $request->query('q', ''));
-        $dateFrom = $request->query('date_from');
-        $dateTo = $request->query('date_to');
+        $today = now()->toDateString();
+        $dateFrom = $request->query('date_from', $today);
+        $dateTo = $request->query('date_to', $today);
         $sellerId = $request->query('seller_id');
 
         $query = SaleItem::query()
