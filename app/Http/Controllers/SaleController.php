@@ -51,11 +51,13 @@ class SaleController extends Controller
                 'created_at' => optional($item->created_at)->toDateTimeString(),
             ]);
 
-        $totals = (clone $query)
+        $summaryQuery = (clone $query)->reorder();
+
+        $totals = $summaryQuery
             ->selectRaw('sum(quantity * unit_price) as revenue')
             ->selectRaw('sum(discount_amount) as discounts')
             ->selectRaw('sum(quantity) as units')
-            ->selectRaw('count(*) as lines')
+            ->selectRaw('count(*) as line_count')
             ->first();
 
         $sellers = User::query()
@@ -75,7 +77,7 @@ class SaleController extends Controller
                 'revenue' => (float) $totals->revenue,
                 'discounts' => (float) $totals->discounts,
                 'units' => (int) $totals->units,
-                'lines' => (int) $totals->lines,
+                'lines' => (int) $totals->line_count,
             ],
             'sellers' => $sellers,
         ]);
