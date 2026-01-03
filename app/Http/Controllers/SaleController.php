@@ -32,7 +32,7 @@ class SaleController extends Controller
                 $builder->whereHas('sale', fn ($sale) => $sale->whereDate('created_at', '<=', $dateTo));
             })
             ->when($sellerId, function ($builder) use ($sellerId) {
-                $builder->whereHas('sale', fn ($sale) => $sale->where('seller_id', $sellerId));
+                $builder->whereHas('sale', fn ($sale) => $sale->where('user_id', $sellerId));
             })
             ->latest();
 

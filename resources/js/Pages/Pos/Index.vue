@@ -30,7 +30,7 @@
                         <button
                             type="button"
                             class="hidden sm:flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black shadow hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                            @click="emitScan"
+                            @click="startScanner"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h2l1-2h6l1 2h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
@@ -43,7 +43,7 @@
                     <button
                         type="button"
                         class="sm:hidden flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black shadow hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        @click="emitScan"
+                        @click="startScanner"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h2l1-2h6l1 2h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
@@ -118,6 +118,24 @@
             class="fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-xl border border-amber-300/60 bg-amber-100/90 px-4 py-2 text-sm font-semibold text-amber-900 shadow-lg"
         >
             {{ toastMessage }}
+        </div>
+
+        <div
+            v-if="showScanner"
+            class="fixed inset-0 z-50 bg-black/80 px-4 py-6 flex flex-col gap-3"
+        >
+            <div class="flex items-center justify-between text-gray-100">
+                <h3 class="text-lg font-semibold">Escanear código</h3>
+                <button type="button" class="text-sm text-gray-300 underline" @click="stopScanner">Cerrar</button>
+            </div>
+            <div class="relative flex-1 rounded-2xl border border-gray-800 bg-black overflow-hidden">
+                <video ref="videoRef" class="h-full w-full object-cover"></video>
+                <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div class="h-32 w-64 rounded-xl border-2 border-amber-400/80"></div>
+                </div>
+            </div>
+            <p v-if="scannerError" class="text-sm text-red-400">{{ scannerError }}</p>
+            <p class="text-xs text-gray-400">Apunta al código de barras, se llenará la búsqueda automáticamente.</p>
         </div>
 
         <div
@@ -212,7 +230,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import BottomNav from '../../Components/BottomNav.vue';
 
@@ -233,6 +251,11 @@ const showModal = ref(false);
 const selectedProduct = ref(null);
 const showToast = ref(false);
 const toastMessage = ref('Venta registrada');
+const showScanner = ref(false);
+const scannerError = ref('');
+const videoRef = ref(null);
+let mediaStream = null;
+let detector = null;
 
 const form = useForm({
     product_id: null,
@@ -274,8 +297,61 @@ watch(search, (val) => {
 
 const formatPrice = (val) => Number(val ?? 0).toFixed(2);
 
-const emitScan = () => {
-    window.dispatchEvent(new Event('pos-scan'));
+const startScanner = async () => {
+    scannerError.value = '';
+    if (!('BarcodeDetector' in window)) {
+        scannerError.value = 'Tu navegador no soporta escaneo nativo.';
+        return;
+    }
+    try {
+        detector = new window.BarcodeDetector({ formats: ['code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39'] });
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        showScanner.value = true;
+        await nextTick();
+        if (videoRef.value) {
+            videoRef.value.srcObject = mediaStream;
+            videoRef.value.play();
+            requestAnimationFrame(scanFrame);
+        }
+    } catch (e) {
+        scannerError.value = 'No se pudo acceder a la cámara.';
+        stopScanner();
+    }
+};
+
+const scanFrame = async () => {
+    if (!videoRef.value || videoRef.value.readyState < 2 || !detector) {
+        requestAnimationFrame(scanFrame);
+        return;
+    }
+    try {
+        const barcodes = await detector.detect(videoRef.value);
+        if (barcodes.length) {
+            const code = barcodes[0].rawValue;
+            search.value = code;
+            showScanner.value = false;
+            stopScanner();
+            debouncedSearch(code);
+            toastMessage.value = `Código: ${code}`;
+            showToast.value = true;
+            setTimeout(() => (showToast.value = false), 1600);
+            return;
+        }
+    } catch (e) {
+        // swallow and retry
+    }
+    if (showScanner.value) {
+        requestAnimationFrame(scanFrame);
+    }
+};
+
+const stopScanner = () => {
+    showScanner.value = false;
+    if (mediaStream) {
+        mediaStream.getTracks().forEach((t) => t.stop());
+        mediaStream = null;
+    }
+    detector = null;
 };
 
 const openSale = (product) => {
@@ -316,6 +392,10 @@ const logoutForm = useForm({});
 const logout = () => {
     logoutForm.post('/logout');
 };
+
+onBeforeUnmount(() => {
+    stopScanner();
+});
 </script>
 
 <style scoped>
