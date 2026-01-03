@@ -6,7 +6,16 @@
                     <p class="text-xs uppercase tracking-wide text-gray-500">Panel</p>
                     <h1 class="text-xl font-semibold text-gray-50">{{ title }}</h1>
                 </div>
-                <slot name="actions" />
+                <div class="flex items-center gap-3">
+                    <slot name="actions" />
+                    <button
+                        type="button"
+                        class="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold text-gray-200 hover:bg-gray-800 hover-lift"
+                        @click="logout"
+                    >
+                        Cerrar sesión
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -19,6 +28,7 @@
 </template>
 
 <script setup>
+import { useForm } from '@inertiajs/vue3';
 import BottomNav from '../Components/BottomNav.vue';
 
 defineProps({
@@ -27,4 +37,10 @@ defineProps({
         default: '',
     },
 });
+
+const logoutForm = useForm({});
+
+const logout = () => {
+    logoutForm.post('/logout');
+};
 </script>

@@ -2,7 +2,16 @@
     <div class="min-h-screen bg-gray-950 text-gray-100">
         <div class="max-w-5xl mx-auto px-4 pt-6 space-y-6 fade-in-soft" :style="contentSafeArea">
             <header class="space-y-3">
-                <h1 class="text-2xl font-semibold text-gray-50">Punto de venta</h1>
+                <div class="flex items-start justify-between gap-3">
+                    <h1 class="text-2xl font-semibold text-gray-50">Punto de venta</h1>
+                    <button
+                        type="button"
+                        class="rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold text-gray-200 hover:bg-gray-800 hover-lift"
+                        @click="logout"
+                    >
+                        Cerrar sesión
+                    </button>
+                </div>
                 <div class="rounded-3xl bg-gray-900 p-4 shadow-lg ring-1 ring-black/30 space-y-3">
                     <div class="flex items-center gap-3">
                         <div class="flex-1 relative">
@@ -103,6 +112,13 @@
         </div>
 
         <BottomNav />
+
+        <div
+            v-if="showToast"
+            class="fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-xl border border-amber-300/60 bg-amber-100/90 px-4 py-2 text-sm font-semibold text-amber-900 shadow-lg"
+        >
+            {{ toastMessage }}
+        </div>
 
         <div
         v-if="showModal && selectedProduct"
@@ -215,6 +231,8 @@ const search = ref(props.filters.q || '');
 const products = ref(props.products);
 const showModal = ref(false);
 const selectedProduct = ref(null);
+const showToast = ref(false);
+const toastMessage = ref('Venta registrada');
 
 const form = useForm({
     product_id: null,
@@ -274,6 +292,14 @@ const submitSale = () => {
         preserveScroll: true,
         onSuccess: () => {
             showModal.value = false;
+            showToast.value = false;
+            toastMessage.value = 'Venta registrada';
+            requestAnimationFrame(() => {
+                showToast.value = true;
+                setTimeout(() => {
+                    showToast.value = false;
+                }, 1800);
+            });
         },
     });
 };
@@ -285,6 +311,11 @@ const closeModal = () => {
 const contentSafeArea = computed(() => ({
     paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))',
 }));
+
+const logoutForm = useForm({});
+const logout = () => {
+    logoutForm.post('/logout');
+};
 </script>
 
 <style scoped>

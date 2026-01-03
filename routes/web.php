@@ -96,5 +96,5 @@ Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
 
     Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
     Route::post('/users', [UserController::class, 'store'])->name('admin.users.store');
-    Route::put('/users/{user}', [UserController::class, 'update'])->name('admin.users.update');
+    Route::match(['put', 'patch', 'post'], '/users/{user}', [UserController::class, 'update'])->name('admin.users.update');
 });
