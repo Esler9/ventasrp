@@ -1,6 +1,6 @@
 <template>
     <div class="min-h-screen bg-gray-950 text-gray-100">
-        <div class="max-w-5xl mx-auto px-4 pb-28 pt-6 space-y-6">
+        <div class="max-w-5xl mx-auto px-4 pt-6 space-y-6 fade-in-soft" :style="contentSafeArea">
             <header class="space-y-3">
                 <h1 class="text-2xl font-semibold text-gray-50">Punto de venta</h1>
                 <div class="rounded-3xl bg-gray-900 p-4 shadow-lg ring-1 ring-black/30 space-y-3">
@@ -102,44 +102,7 @@
             </main>
         </div>
 
-        <nav class="fixed inset-x-0 bottom-0 z-40 bg-gray-900/90 backdrop-blur">
-            <div class="mx-auto flex max-w-5xl items-center justify-around rounded-t-3xl bg-gray-900 px-6 py-3 text-xs text-gray-300">
-                <a href="/pos" class="flex flex-col items-center gap-1 text-amber-400">
-                    <span class="text-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M5 7l1 12h12l1-12M9 11v2m6-2v2" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
-                        </svg>
-                    </span>
-                    <span>POS</span>
-                </a>
-                <a href="/admin/products" class="flex flex-col items-center gap-1">
-                    <span class="text-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m4 7 8-4 8 4m-14 0v10l6 3m0-13 6-3v10l-6 3m0-13v13" />
-                        </svg>
-                    </span>
-                    <span>Productos</span>
-                </a>
-                <a href="/admin/sales" class="flex flex-col items-center gap-1">
-                    <span class="text-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16v4H4V7Zm0 6h16v4H4v-4Z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 9h.01M7 15h.01m4-6h6M11 15h6" />
-                        </svg>
-                    </span>
-                    <span>Ventas</span>
-                </a>
-                <a href="/admin" class="flex flex-col items-center gap-1">
-                    <span class="text-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m-8-8h16" />
-                        </svg>
-                    </span>
-                    <span>Panel</span>
-                </a>
-            </div>
-        </nav>
+        <BottomNav />
 
         <div
         v-if="showModal && selectedProduct"
@@ -233,8 +196,9 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
+import BottomNav from '../../Components/BottomNav.vue';
 
 const props = defineProps({
     products: {
@@ -317,6 +281,10 @@ const submitSale = () => {
 const closeModal = () => {
     showModal.value = false;
 };
+
+const contentSafeArea = computed(() => ({
+    paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))',
+}));
 </script>
 
 <style scoped>
