@@ -151,6 +151,19 @@
                 >
                     Buscar
                 </button>
+                <div class="space-y-1 text-xs text-gray-400">
+                    <p>O sube una foto de un código QR (respaldo con jsQR):</p>
+                    <div class="flex gap-2">
+                        <button
+                            type="button"
+                            class="flex-1 rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm font-semibold text-gray-100 hover:bg-gray-800"
+                            @click="pickImage"
+                        >
+                            Subir foto
+                        </button>
+                        <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="onImageSelected" capture="environment" />
+                    </div>
+                </div>
             </div>
             <p v-if="scannerError" class="text-sm text-red-400">{{ scannerError }}</p>
             <p class="text-xs text-gray-400">Apunta al código de barras, se llenará la búsqueda automáticamente.</p>
@@ -261,6 +274,8 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import BottomNav from '../../Components/BottomNav.vue';
+import Quagga from '@ericblade/quagga2';
+import jsQR from 'jsqr';
 
 const props = defineProps({
     products: {
@@ -283,8 +298,10 @@ const showScanner = ref(false);
 const scannerError = ref('');
 const videoRef = ref(null);
 const fallbackManual = ref(false);
+const fileInputRef = ref(null);
 let mediaStream = null;
 let detector = null;
+let quaggaRunning = false;
 
 const form = useForm({
     product_id: null,
@@ -334,24 +351,23 @@ const startScanner = async () => {
         scannerError.value = 'Tu dispositivo no permite acceso a cámara.';
         return;
     }
-    if (!('BarcodeDetector' in window)) {
-        scannerError.value = 'Safari no soporta escaneo nativo. Usa el ingreso manual.';
-        fallbackManual.value = true;
-        return;
-    }
-    try {
-        detector = new window.BarcodeDetector({ formats: ['code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39'] });
-        mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-        await nextTick();
-        if (videoRef.value) {
-            videoRef.value.srcObject = mediaStream;
-            videoRef.value.play().catch(() => {});
-            requestAnimationFrame(scanFrame);
+    if ('BarcodeDetector' in window) {
+        try {
+            detector = new window.BarcodeDetector({ formats: ['code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39'] });
+            mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+            await nextTick();
+            if (videoRef.value) {
+                videoRef.value.srcObject = mediaStream;
+                videoRef.value.play().catch(() => {});
+                requestAnimationFrame(scanFrame);
+            }
+            return;
+        } catch (e) {
+            // fallback to Quagga
         }
-    } catch (e) {
-        scannerError.value = 'No se pudo acceder a la cámara (revisa permisos en el navegador).';
-        stopScanner(true);
     }
+
+    startQuaggaFallback();
 };
 
 const scanFrame = async () => {
@@ -387,6 +403,10 @@ const stopScanner = (keepOverlay = false) => {
         mediaStream = null;
     }
     detector = null;
+    if (quaggaRunning) {
+        Quagga.stop();
+        quaggaRunning = false;
+    }
 };
 
 const openSale = (product) => {
@@ -435,6 +455,86 @@ const applyManualSearch = () => {
         toastMessage.value = `Código: ${search.value}`;
         showToast.value = true;
         setTimeout(() => (showToast.value = false), 1600);
+    }
+};
+
+const pickImage = () => {
+    fileInputRef.value?.click();
+};
+
+const onImageSelected = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const result = jsQR(imageData.data, imageData.width, imageData.height);
+            if (result?.data) {
+                search.value = result.data;
+                applyManualSearch();
+            } else {
+                scannerError.value = 'No se detectó un QR en la imagen.';
+            }
+        };
+        img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+};
+
+const startQuaggaFallback = async () => {
+    try {
+        await nextTick();
+        const constraints = {
+            facingMode: 'environment',
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+        };
+
+        Quagga.init(
+            {
+                inputStream: {
+                    name: 'Live',
+                    type: 'LiveStream',
+                    target: videoRef.value,
+                    constraints,
+                },
+                decoder: {
+                    readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader', 'upc_e_reader'],
+                },
+                locate: true,
+            },
+            (err) => {
+                if (err) {
+                    scannerError.value = 'No se pudo iniciar el escáner. Usa el ingreso manual.';
+                    fallbackManual.value = true;
+                    return;
+                }
+                Quagga.start();
+                quaggaRunning = true;
+                Quagga.onDetected((result) => {
+                    const code = result?.codeResult?.code;
+                    if (!code) return;
+                    stopScanner(false);
+                    search.value = code;
+                    debouncedSearch(code);
+                    toastMessage.value = `Código: ${code}`;
+                    showToast.value = true;
+                    setTimeout(() => (showToast.value = false), 1600);
+                });
+            },
+        );
+    } catch (e) {
+        scannerError.value = 'Tu navegador no soporta escaneo. Usa el ingreso manual.';
+        fallbackManual.value = true;
     }
 };
 
