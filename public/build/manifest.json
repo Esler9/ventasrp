@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-Bqid8w1X.css",
+    "file": "assets/app-Do3qDYZ9.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -15,7 +15,7 @@
     "isEntry": true
   },
   "resources/js/pos-app.js": {
-    "file": "assets/pos-app-K2S0xmeW.js",
+    "file": "assets/pos-app-Bc7eoraQ.js",
     "name": "pos-app",
     "src": "resources/js/pos-app.js",
     "isEntry": true,
@@ -24,7 +24,7 @@
     ],
     "css": [
       "assets/pos-app-N8q1APVS.css",
-      "assets/app-Bqid8w1X.css"
+      "assets/app-Do3qDYZ9.css"
     ]
   }
 }

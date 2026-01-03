@@ -3,6 +3,7 @@
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\AuthController;
 use App\Models\Product;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -18,12 +19,20 @@ Route::get('/', function () {
         return redirect()->to('/admin');
     }
 
-    return redirect()->to('/filament/login');
+    return redirect()->to('/login');
 });
 
-// Alias para login (por si se visita /login o /admin/login)
-Route::get('/login', fn () => redirect('/filament/login'));
-Route::get('/admin/login', fn () => redirect('/filament/login'));
+// Login propio con Inertia
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+});
+
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+
+// Redirecciones de compatibilidad
+Route::get('/admin/login', fn () => redirect('/login'));
+Route::get('/filament/login', fn () => redirect('/login'));
 
 Route::middleware(['web', 'auth'])->get('/pos', function (\Illuminate\Http\Request $request) {
     $q = trim((string) $request->query('q', ''));
