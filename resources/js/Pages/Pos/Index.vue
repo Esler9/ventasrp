@@ -129,7 +129,7 @@
                 <button type="button" class="text-sm text-gray-300 underline" @click="stopScanner">Cerrar</button>
             </div>
             <div class="relative flex-1 rounded-2xl border border-gray-800 bg-black overflow-hidden">
-                <video ref="videoRef" class="h-full w-full object-cover"></video>
+                <video ref="videoRef" class="h-full w-full object-cover" autoplay playsinline muted></video>
                 <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <div class="h-32 w-64 rounded-xl border-2 border-amber-400/80"></div>
                 </div>
@@ -299,22 +299,26 @@ const formatPrice = (val) => Number(val ?? 0).toFixed(2);
 
 const startScanner = async () => {
     scannerError.value = '';
+    if (!navigator.mediaDevices?.getUserMedia) {
+        scannerError.value = 'Tu dispositivo no permite acceso a cámara.';
+        return;
+    }
     if (!('BarcodeDetector' in window)) {
         scannerError.value = 'Tu navegador no soporta escaneo nativo.';
         return;
     }
     try {
         detector = new window.BarcodeDetector({ formats: ['code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39'] });
-        mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
         showScanner.value = true;
         await nextTick();
         if (videoRef.value) {
             videoRef.value.srcObject = mediaStream;
-            videoRef.value.play();
+            videoRef.value.play().catch(() => {});
             requestAnimationFrame(scanFrame);
         }
     } catch (e) {
-        scannerError.value = 'No se pudo acceder a la cámara.';
+        scannerError.value = 'No se pudo acceder a la cámara (revisa permisos).';
         stopScanner();
     }
 };

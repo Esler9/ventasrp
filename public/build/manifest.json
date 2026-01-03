@@ -15,7 +15,7 @@
     "isEntry": true
   },
   "resources/js/pos-app.js": {
-    "file": "assets/pos-app-BzrTNECr.js",
+    "file": "assets/pos-app-tHoV4ln5.js",
     "name": "pos-app",
     "src": "resources/js/pos-app.js",
     "isEntry": true,
@@ -23,7 +23,7 @@
       "resources/js/app.js"
     ],
     "css": [
-      "assets/pos-app-Di7vO7On.css",
+      "assets/pos-app-CRWFJfb4.css",
       "assets/app-BHfNLdoo.css"
     ]
   }
