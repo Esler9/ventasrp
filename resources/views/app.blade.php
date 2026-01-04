@@ -9,7 +9,6 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('logos/iconofm-32.png') }}">
     <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('logos/iconofm.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('logos/iconofm.png') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha384-Piv4xVNRyMGpqkM0Myd7sQJ2DqJE50E+I4QJ9bAQQ4K5j0vvVuv5QW7HQwZ0p5Gy" crossorigin="anonymous">
     @vite('resources/js/pos-app.js')
     @inertiaHead
 </head>

@@ -1,5 +1,6 @@
 import './bootstrap';
 import '../css/app.css';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 import { createApp, h } from 'vue';
 import { createInertiaApp, router } from '@inertiajs/vue3';
 import { startGlobalLoader, stopGlobalLoader } from './composables/useGlobalLoader';
