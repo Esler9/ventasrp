@@ -68,7 +68,7 @@ class ProductController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'unit_label' => ['required', 'string', 'max:50'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'sku' => ['required', 'string', 'max:255', 'unique:products,sku'],
+            'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku'],
             'price' => ['required', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
             'expires_at' => ['nullable', 'date'],
@@ -86,6 +86,7 @@ class ProductController extends Controller
             $data['photo'] = 'products/' . ltrim($path, '/');
         }
 
+        $this->ensureSku($data);
         $presentations = $data['presentations'] ?? [];
         unset($data['presentations']);
 
@@ -128,7 +129,7 @@ class ProductController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'unit_label' => ['required', 'string', 'max:50'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'sku' => ['required', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($product->id)],
+            'sku' => ['nullable', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($product->id)],
             'price' => ['required', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
             'expires_at' => ['nullable', 'date'],
@@ -147,6 +148,7 @@ class ProductController extends Controller
             $data['photo'] = 'products/' . ltrim($path, '/');
         }
 
+        $this->ensureSku($data, $product->id);
         $presentations = $data['presentations'] ?? [];
         unset($data['presentations']);
 
@@ -202,5 +204,36 @@ class ProductController extends Controller
                 ]
             );
         }
+    }
+
+    private function ensureSku(array &$data, ?int $ignoreId = null): void
+    {
+        $sku = trim((string) ($data['sku'] ?? ''));
+        if ($sku !== '') {
+            $data['sku'] = $sku;
+            return;
+        }
+
+        $base = Str::slug((string) ($data['name'] ?? ''), '-');
+        if ($base === '') {
+            $base = 'sku';
+        }
+
+        $base = strtoupper($base);
+        $candidate = $base;
+        $suffix = 1;
+
+        $exists = function (string $value) use ($ignoreId): bool {
+            return Product::where('sku', $value)
+                ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+                ->exists();
+        };
+
+        while ($exists($candidate)) {
+            $suffix++;
+            $candidate = $base . '-' . $suffix;
+        }
+
+        $data['sku'] = $candidate;
     }
 }

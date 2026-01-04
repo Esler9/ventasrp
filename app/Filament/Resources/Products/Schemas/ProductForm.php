@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Products\Schemas;
 use App\Models\Product;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Schema;
@@ -27,16 +26,6 @@ class ProductForm
                     ->label('Nombre')
                     ->required()
                     ->maxLength(255),
-                TextInput::make('unit_label')
-                    ->label('Unidad base')
-                    ->default('Unidad')
-                    ->maxLength(50)
-                    ->required(),
-                Textarea::make('description')
-                    ->label('Descripción')
-                    ->rows(3)
-                    ->maxLength(2000)
-                    ->nullable(),
                 TextInput::make('sku')
                     ->label('SKU / Código')
                     ->required()

@@ -28,7 +28,7 @@
                             v-model="form.sku"
                             type="text"
                             class="w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
-                            required
+                            placeholder="Opcional, se genera del nombre si se deja vacío"
                         />
                     </div>
                     <div class="space-y-1 md:col-span-2">
