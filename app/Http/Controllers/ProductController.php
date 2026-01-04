@@ -151,6 +151,9 @@ class ProductController extends Controller
         if ($request->hasFile('photo')) {
             $path = $request->file('photo')->store('', 'public_products');
             $data['photo'] = 'products/' . ltrim($path, '/');
+        } else {
+            // Mantener la foto actual si no se envía una nueva
+            unset($data['photo']);
         }
 
         $this->ensureSku($data, $product->id);
