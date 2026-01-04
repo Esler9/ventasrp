@@ -73,6 +73,21 @@
             "dont-discover": []
         }
     },
+    "conflict": {
+        "filament/filament": "*",
+        "filament/actions": "*",
+        "filament/forms": "*",
+        "filament/infolists": "*",
+        "filament/notifications": "*",
+        "filament/query-builder": "*",
+        "filament/schemas": "*",
+        "filament/support": "*",
+        "filament/tables": "*",
+        "filament/widgets": "*",
+        "livewire/livewire": "*",
+        "blade-ui-kit/blade-icons": "*",
+        "blade-ui-kit/blade-heroicons": "*"
+    },
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
