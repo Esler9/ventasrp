@@ -35,6 +35,7 @@ class PosController extends Controller
                 $presentationFactor = max(1, (int) $data['presentation_factor']);
                 $presentationQuantity = max(1, (int) $data['quantity']);
                 $unitsToDecrement = $presentationFactor * $presentationQuantity;
+                $remaining = (int) $product->stock - $unitsToDecrement;
 
                 if ($product->stock < $unitsToDecrement) {
                     throw new \RuntimeException("Stock insuficiente para {$product->name} (disponible {$product->stock}).");
@@ -73,11 +74,18 @@ class PosController extends Controller
                     'quantity' => -$data['quantity'],
                     'note' => $data['note'] ?? 'Venta rápida',
                 ]);
+
+                session()->flash('success', [
+                    'title' => 'Venta registrada',
+                    'description' => "{$presentationQuantity} x {$presentationName} · Total Q" . number_format($data['price'] * $presentationQuantity, 2) . ". Stock restante: {$remaining}",
+                ]);
             });
         } catch (\Throwable $e) {
-            return back()->withErrors(['sale' => $e->getMessage()]);
+            return back()
+                ->withErrors(['sale' => $e->getMessage()])
+                ->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Venta registrada');
+        return back();
     }
 }

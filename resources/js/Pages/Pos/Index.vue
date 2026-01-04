@@ -1,6 +1,9 @@
 <template>
     <div class="min-h-screen bg-gray-950 text-gray-100">
         <GlobalLoader />
+        <div class="px-4 pt-3">
+            <FlashBanner />
+        </div>
         <div class="max-w-5xl mx-auto px-4 pt-6 space-y-6 fade-in-soft" :style="contentSafeArea">
             <header class="space-y-3">
                 <div class="flex items-start justify-between gap-3">
@@ -120,7 +123,8 @@
 
         <div
             v-if="showToast"
-            class="fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-xl border border-amber-300/60 bg-amber-100/90 px-4 py-2 text-sm font-semibold text-amber-900 shadow-lg"
+            class="fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-xl border px-4 py-2 text-sm font-semibold shadow-lg"
+            :class="toastTone === 'error' ? 'border-red-300/60 bg-red-100/90 text-red-900' : 'border-amber-300/60 bg-amber-100/90 text-amber-900'"
         >
             {{ toastMessage }}
         </div>
@@ -185,12 +189,12 @@
         </div>
 
         <div
-        v-if="showModal && selectedProduct"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-    >
-        <div class="w-full max-w-md rounded-2xl bg-gray-900 p-5 shadow-2xl ring-1 ring-black/30 text-gray-100">
-            <div class="flex items-start gap-3">
-                <div class="h-14 w-14 rounded-xl bg-gray-850 overflow-hidden ring-1 ring-black/30 flex-shrink-0">
+            v-if="showModal && selectedProduct"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto"
+        >
+            <div class="w-full max-w-md rounded-2xl bg-gray-900 p-5 shadow-2xl ring-1 ring-black/30 text-gray-100">
+                <div class="flex items-start gap-3">
+                    <div class="h-14 w-14 rounded-xl bg-gray-850 overflow-hidden ring-1 ring-black/30 flex-shrink-0">
                     <img
                         v-if="selectedProduct.photo_url"
                         :src="selectedProduct.photo_url"
@@ -271,6 +275,9 @@
                 <div v-if="form.errors.sale" class="text-sm text-red-400">
                     {{ form.errors.sale }}
                 </div>
+                <div v-if="saleErrorActionUrl" class="text-xs text-amber-300">
+                    Stock insuficiente. <a :href="saleErrorActionUrl" class="underline">Editar stock</a>
+                </div>
 
                 <div class="mt-2 flex gap-2">
                     <button
@@ -299,6 +306,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import BottomNav from '../../Components/BottomNav.vue';
 import GlobalLoader from '../../Components/GlobalLoader.vue';
+import FlashBanner from '../../Components/FlashBanner.vue';
 import Quagga from '@ericblade/quagga2';
 import jsQR from 'jsqr';
 
@@ -320,6 +328,8 @@ const selectedProduct = ref(null);
 const selectedPresentation = ref(null);
 const showToast = ref(false);
 const toastMessage = ref('Venta registrada');
+const toastTone = ref('success');
+const saleErrorActionUrl = ref(null);
 const showScanner = ref(false);
 const scannerError = ref('');
 const videoRef = ref(null);
@@ -478,6 +488,7 @@ const openSale = (product) => {
     form.product_id = product.id;
     form.quantity = 1;
     form.note = '';
+    saleErrorActionUrl.value = null;
     const options = presentationOptions.value;
     const firstOption = options[0] || { key: 'base', id: null, name: product.unit_label || 'Unidad', factor: 1, price: product.price };
     selectPresentation(firstOption);
@@ -487,10 +498,24 @@ const openSale = (product) => {
 const submitSale = () => {
     form.post('/pos/sales', {
         preserveScroll: true,
+        onError: (errors) => {
+            toastTone.value = 'error';
+            toastMessage.value = errors.sale || 'No se pudo registrar la venta';
+            if (errors.sale?.toLowerCase().includes('stock') && selectedProduct.value?.id) {
+                saleErrorActionUrl.value = `/admin/products/${selectedProduct.value.id}/edit`;
+            }
+            showToast.value = true;
+            setTimeout(() => {
+                showToast.value = false;
+            }, 2200);
+        },
         onSuccess: () => {
             showModal.value = false;
             showToast.value = false;
-            toastMessage.value = 'Venta registrada';
+            const total = (form.price || 0) * (form.quantity || 0);
+            toastTone.value = 'success';
+            toastMessage.value = `Venta: ${form.quantity} x ${form.presentation_name || selectedProduct.value?.unit_label || 'Unidad'} · Q${formatPrice(total)}`;
+            saleErrorActionUrl.value = null;
             requestAnimationFrame(() => {
                 showToast.value = true;
                 setTimeout(() => {

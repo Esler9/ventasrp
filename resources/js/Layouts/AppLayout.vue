@@ -1,6 +1,9 @@
 <template>
     <div class="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
         <GlobalLoader />
+        <div class="mx-auto w-full max-w-6xl px-4 pt-3">
+            <FlashBanner />
+        </div>
         <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur fade-in-soft">
             <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
                 <div class="space-y-1">
@@ -32,6 +35,7 @@
 import { useForm } from '@inertiajs/vue3';
 import BottomNav from '../Components/BottomNav.vue';
 import GlobalLoader from '../Components/GlobalLoader.vue';
+import FlashBanner from '../Components/FlashBanner.vue';
 
 defineProps({
     title: {

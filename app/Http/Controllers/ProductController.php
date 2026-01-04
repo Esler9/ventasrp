@@ -94,7 +94,12 @@ class ProductController extends Controller
         $product = Product::create($data);
         $this->syncPresentations($product, $presentations);
 
-        return redirect()->route('products.index')->with('success', 'Producto creado');
+        return redirect()
+            ->route('products.index')
+            ->with('success', [
+                'title' => 'Producto creado',
+                'description' => "{$product->name} guardado. Stock: {$product->stock} {$product->unit_label}.",
+            ]);
     }
 
     public function edit(Product $product): Response
@@ -155,14 +160,22 @@ class ProductController extends Controller
         $product->update($data);
         $this->syncPresentations($product, $presentations);
 
-        return redirect()->route('products.index')->with('success', 'Producto actualizado');
+        return redirect()
+            ->route('products.index')
+            ->with('success', [
+                'title' => 'Producto actualizado',
+                'description' => "{$product->name} guardado. Stock: {$product->stock} {$product->unit_label}.",
+            ]);
     }
 
     public function destroy(Product $product): RedirectResponse
     {
         $product->delete();
 
-        return redirect()->route('products.index')->with('success', 'Producto eliminado');
+        return redirect()->route('products.index')->with('success', [
+            'title' => 'Producto eliminado',
+            'description' => 'El producto fue eliminado correctamente.',
+        ]);
     }
 
     private function photoUrl(?string $path): ?string
