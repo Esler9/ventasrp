@@ -15,6 +15,9 @@ class PosController extends Controller
     {
         $data = $request->validate([
             'product_id' => ['required', 'integer', 'exists:products,id'],
+            'product_presentation_id' => ['nullable', 'integer', 'exists:product_presentations,id'],
+            'presentation_name' => ['nullable', 'string', 'max:255'],
+            'presentation_factor' => ['required', 'integer', 'min:1'],
             'quantity' => ['required', 'integer', 'min:1'],
             'price' => ['required', 'numeric', 'min:0'],
             'note' => ['nullable', 'string'],
@@ -29,24 +32,35 @@ class PosController extends Controller
                     throw new \RuntimeException('Producto no disponible.');
                 }
 
-                if ($product->stock < $data['quantity']) {
+                $presentationFactor = max(1, (int) $data['presentation_factor']);
+                $presentationQuantity = max(1, (int) $data['quantity']);
+                $unitsToDecrement = $presentationFactor * $presentationQuantity;
+
+                if ($product->stock < $unitsToDecrement) {
                     throw new \RuntimeException("Stock insuficiente para {$product->name} (disponible {$product->stock}).");
                 }
 
-                $product->decrement('stock', $data['quantity']);
+                $product->decrement('stock', $unitsToDecrement);
 
                 $sale = Sale::create([
                     'user_id' => $request->user()->id,
-                    'items_count' => $data['quantity'],
-                    'total' => $data['price'] * $data['quantity'],
+                    'items_count' => $unitsToDecrement,
+                    'total' => $data['price'] * $presentationQuantity,
                 ]);
 
-                $discount = max(0, ((float) $product->price - (float) $data['price']) * $data['quantity']);
+                $unitPrice = $presentationFactor > 0 ? (float) $data['price'] / $presentationFactor : (float) $data['price'];
+                $discount = max(0, ((float) $product->price - $unitPrice) * $unitsToDecrement);
+                $presentationName = $data['presentation_name'] ?? $product->unit_label ?? 'Unidad';
 
                 $sale->items()->create([
                     'product_id' => $product->id,
-                    'quantity' => $data['quantity'],
-                    'unit_price' => $data['price'],
+                    'product_presentation_id' => $data['product_presentation_id'] ?? null,
+                    'presentation_name' => $presentationName,
+                    'presentation_factor' => $presentationFactor,
+                    'presentation_price' => $data['price'],
+                    'presentation_quantity' => $presentationQuantity,
+                    'quantity' => $unitsToDecrement,
+                    'unit_price' => $unitPrice,
                     'original_price' => $product->price,
                     'discount_amount' => $discount,
                     'note' => $data['note'] ?? null,

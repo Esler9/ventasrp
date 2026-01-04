@@ -27,6 +27,11 @@ class ProductForm
                     ->label('Nombre')
                     ->required()
                     ->maxLength(255),
+                TextInput::make('unit_label')
+                    ->label('Unidad base')
+                    ->default('Unidad')
+                    ->maxLength(50)
+                    ->required(),
                 Textarea::make('description')
                     ->label('Descripción')
                     ->rows(3)

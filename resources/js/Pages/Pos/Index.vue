@@ -81,6 +81,7 @@
                                 <div class="space-y-1">
                                     <div class="text-base font-semibold text-gray-50">{{ product.name }}</div>
                                     <div class="text-xs text-gray-400">SKU: {{ product.sku }}</div>
+                                    <div class="text-xs text-gray-400">Unidad base: {{ product.unit_label || 'Unidad' }}</div>
                                     <div class="text-xs text-gray-400">
                                         {{ shortDescription(product.description) }}
                                     </div>
@@ -207,7 +208,7 @@
                         <div>
                             <h3 class="text-lg font-semibold">Confirmar venta</h3>
                             <p class="text-sm text-gray-400">{{ selectedProduct.name }} · SKU: {{ selectedProduct.sku }}</p>
-                            <p class="text-xs text-gray-500">Stock disponible: {{ selectedProduct.stock }}</p>
+                            <p class="text-xs text-gray-500">Stock disponible: {{ selectedProduct.stock }} {{ selectedProduct.unit_label || 'unidades' }}</p>
                             <p v-if="selectedProduct.expires_at" class="text-xs text-amber-300">Vence: {{ selectedProduct.expires_at }}</p>
                         </div>
                         <button type="button" class="text-gray-400 hover:text-white" @click="closeModal">
@@ -217,7 +218,26 @@
                 </div>
             </div>
 
-            <div class="mt-4 space-y-3">
+            <form class="mt-4 space-y-3" @submit.prevent="submitSale">
+                <div class="space-y-1">
+                    <label class="text-sm text-gray-300">Presentación</label>
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <button
+                            v-for="option in presentationOptions"
+                            :key="option.key"
+                            type="button"
+                            class="rounded-lg border px-3 py-2 text-left text-sm transition"
+                            :class="option.key === selectedPresentationKey ? 'border-amber-400 bg-amber-400/10 text-amber-100' : 'border-gray-800 bg-gray-950/60 text-gray-100 hover:border-amber-300/40'"
+                            @click="selectPresentation(option)"
+                        >
+                            <div class="font-semibold">{{ option.name }}</div>
+                            <div class="text-xs text-gray-400">Descuenta {{ option.factor }} {{ selectedProduct.unit_label || 'unidad(es)' }}</div>
+                            <div class="text-xs text-gray-300">Q{{ formatPrice(option.price) }}</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid gap-3 md:grid-cols-2">
                     <div>
                         <label class="text-sm font-semibold text-gray-200">Cantidad</label>
                         <input
@@ -226,9 +246,10 @@
                             v-model.number="form.quantity"
                             class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 text-base text-gray-100 shadow-inner focus:border-amber-400 focus:ring-amber-400"
                         >
+                        <p class="mt-1 text-xs text-gray-500">Equivalente a {{ form.quantity * form.presentation_factor }} {{ selectedProduct.unit_label || 'unidades' }}</p>
                     </div>
                     <div>
-                        <label class="text-sm font-semibold text-gray-200">Precio unitario</label>
+                        <label class="text-sm font-semibold text-gray-200">Precio por presentación</label>
                         <input
                             type="number"
                             min="0"
@@ -236,23 +257,22 @@
                             v-model.number="form.price"
                             class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 text-base text-gray-100 shadow-inner focus:border-amber-400 focus:ring-amber-400"
                         >
-                        <p class="mt-1 text-xs text-gray-500">Puedes ajustar el precio. La diferencia queda registrada como descuento.</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-semibold text-gray-200">Nota (opcional)</label>
-                        <textarea
-                            rows="2"
-                            v-model="form.note"
-                            class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 text-base text-gray-100 shadow-inner focus:border-amber-400 focus:ring-amber-400"
-                        ></textarea>
-                    </div>
-                    <div class="flex justify-between rounded-lg bg-gray-800 p-3 text-sm font-semibold text-gray-100">
-                        <span>Total</span>
-                        <span>Q{{ formatPrice((form.price || 0) * (form.quantity || 0)) }}</span>
+                        <p class="mt-1 text-xs text-gray-500">Total: Q{{ formatPrice((form.price || 0) * (form.quantity || 0)) }}</p>
                     </div>
                 </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-200">Nota (opcional)</label>
+                    <textarea
+                        rows="2"
+                        v-model="form.note"
+                        class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 text-base text-gray-100 shadow-inner focus:border-amber-400 focus:ring-amber-400"
+                    ></textarea>
+                </div>
+                <div v-if="form.errors.sale" class="text-sm text-red-400">
+                    {{ form.errors.sale }}
+                </div>
 
-                <div class="mt-4 flex gap-2">
+                <div class="mt-2 flex gap-2">
                     <button
                         type="button"
                         class="flex-1 rounded-lg border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-200 hover:bg-gray-800"
@@ -261,17 +281,17 @@
                         Cancelar
                     </button>
                     <button
-                        type="button"
+                        type="submit"
                         class="flex-1 rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-black shadow hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        @click="submitSale"
                         :disabled="form.processing"
                     >
                         Vender
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
+</div>
 </template>
 
 <script setup>
@@ -297,6 +317,7 @@ const search = ref(props.filters.q || '');
 const products = ref(props.products);
 const showModal = ref(false);
 const selectedProduct = ref(null);
+const selectedPresentation = ref(null);
 const showToast = ref(false);
 const toastMessage = ref('Venta registrada');
 const showScanner = ref(false);
@@ -310,6 +331,9 @@ let quaggaRunning = false;
 
 const form = useForm({
     product_id: null,
+    product_presentation_id: null,
+    presentation_name: '',
+    presentation_factor: 1,
     quantity: 1,
     price: '',
     note: '',
@@ -350,6 +374,37 @@ const formatPrice = (val) => Number(val ?? 0).toFixed(2);
 const shortDescription = (text) => {
     if (!text) return 'Sin descripción';
     return text.length > 90 ? `${text.slice(0, 87)}...` : text;
+};
+
+const presentationOptions = computed(() => {
+    if (!selectedProduct.value) return [];
+    const baseOption = {
+        key: 'base',
+        id: null,
+        name: selectedProduct.value.unit_label || 'Unidad',
+        factor: 1,
+        price: selectedProduct.value.price,
+    };
+    const extras =
+        selectedProduct.value.presentations?.map((p) => ({
+            key: `p-${p.id ?? p.name}`,
+            id: p.id ?? null,
+            name: p.name,
+            factor: p.factor || 1,
+            price: p.price,
+        })) ?? [];
+
+    return [baseOption, ...extras];
+});
+
+const selectedPresentationKey = computed(() => selectedPresentation.value?.key ?? null);
+
+const selectPresentation = (option) => {
+    selectedPresentation.value = option;
+    form.product_presentation_id = option.id;
+    form.presentation_name = option.name;
+    form.presentation_factor = option.factor;
+    form.price = option.price;
 };
 
 const startScanner = async () => {
@@ -422,8 +477,10 @@ const openSale = (product) => {
     selectedProduct.value = product;
     form.product_id = product.id;
     form.quantity = 1;
-    form.price = product.price;
     form.note = '';
+    const options = presentationOptions.value;
+    const firstOption = options[0] || { key: 'base', id: null, name: product.unit_label || 'Unidad', factor: 1, price: product.price };
+    selectPresentation(firstOption);
     showModal.value = true;
 };
 

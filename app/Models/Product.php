@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\ProductPresentation;
 
 class Product extends Model
 {
     protected $fillable = [
         'name',
+        'unit_label',
         'description',
         'photo',
         'sku',
@@ -23,6 +25,11 @@ class Product extends Model
         'expires_at' => 'date',
         'is_active' => 'bool',
     ];
+
+    public function presentations(): HasMany
+    {
+        return $this->hasMany(ProductPresentation::class);
+    }
 
     public function saleItems(): HasMany
     {

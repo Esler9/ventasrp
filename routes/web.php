@@ -39,8 +39,13 @@ Route::middleware(['web', 'auth'])->get('/pos', function (\Illuminate\Http\Reque
     $q = trim((string) $request->query('q', ''));
 
     $products = Product::query()
-        ->select(['id', 'name', 'description', 'sku', 'stock', 'price', 'expires_at', 'photo'])
+        ->select(['id', 'name', 'unit_label', 'description', 'sku', 'stock', 'price', 'expires_at', 'photo'])
         ->where('is_active', true)
+        ->with(['presentations' => function ($query) {
+            $query->where('is_active', true)
+                ->orderBy('factor')
+                ->select(['id', 'product_id', 'name', 'factor', 'price', 'is_active']);
+        }])
         ->when($q !== '', function ($builder) use ($q) {
             $builder->where(function ($sub) use ($q) {
                 $sub->where('name', 'like', "%{$q}%")
@@ -65,6 +70,8 @@ Route::middleware(['web', 'auth'])->get('/pos', function (\Illuminate\Http\Reque
             } else {
                 $product->photo_url = asset('products/' . $path);
             }
+
+            $product->unit_label = $product->unit_label ?? 'Unidad';
 
             return $product;
         });

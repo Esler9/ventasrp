@@ -13,6 +13,16 @@
                         />
                     </div>
                     <div class="space-y-1">
+                        <label class="text-sm text-gray-300">Unidad base</label>
+                        <input
+                            v-model="form.unit_label"
+                            type="text"
+                            class="w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
+                            placeholder="Ej. Unidad, Litro, Metro"
+                            required
+                        />
+                    </div>
+                    <div class="space-y-1">
                         <label class="text-sm text-gray-300">SKU / Código</label>
                         <input
                             v-model="form.sku"
@@ -83,6 +93,75 @@
                     </div>
                 </div>
 
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-100">Presentaciones</p>
+                            <p class="text-xs text-gray-400">Opcional: ej. Blíster, Caja, Pack</p>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-100 hover:bg-gray-800"
+                            @click="addPresentation"
+                        >
+                            Agregar
+                        </button>
+                    </div>
+
+                    <div v-if="form.presentations.length" class="space-y-3">
+                        <div
+                            v-for="(presentation, index) in form.presentations"
+                            :key="presentation.id || index"
+                            class="grid gap-2 rounded-xl border border-gray-800 bg-gray-900/60 p-3 md:grid-cols-5 md:items-center"
+                        >
+                            <div class="space-y-1 md:col-span-2">
+                                <label class="text-xs text-gray-400">Nombre</label>
+                                <input
+                                    v-model="presentation.name"
+                                    type="text"
+                                    class="w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
+                                    placeholder="Ej. Blíster"
+                                />
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs text-gray-400">Factor (unidades)</label>
+                                <input
+                                    v-model.number="presentation.factor"
+                                    type="number"
+                                    min="1"
+                                    class="w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
+                                />
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs text-gray-400">Precio (Q)</label>
+                                <input
+                                    v-model.number="presentation.price"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    class="w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
+                                />
+                            </div>
+                            <div class="flex items-center gap-3 md:justify-end">
+                                <label class="inline-flex items-center gap-2 text-xs text-gray-300">
+                                    <input v-model="presentation.is_active" type="checkbox" class="h-4 w-4 rounded border-gray-700 bg-gray-900 text-amber-400 focus:ring-amber-500" />
+                                    Activa
+                                </label>
+                                <button
+                                    type="button"
+                                    class="text-xs text-red-400 hover:text-red-300"
+                                    @click="removePresentation(index)"
+                                >
+                                    Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="rounded-lg border border-dashed border-gray-800 px-4 py-3 text-xs text-gray-400">
+                        Sin presentaciones adicionales. Se venderá como {{ form.unit_label || 'Unidad' }}.
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-2">
                     <Link href="/admin/products" class="rounded-lg border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-100 hover:bg-gray-800">
                         Cancelar
@@ -114,6 +193,7 @@ const props = defineProps({
 
 const form = useForm({
     name: props.product?.name ?? '',
+    unit_label: props.product?.unit_label ?? 'Unidad',
     description: props.product?.description ?? '',
     sku: props.product?.sku ?? '',
     price: props.product?.price ?? '',
@@ -121,6 +201,13 @@ const form = useForm({
     expires_at: props.product?.expires_at ?? '',
     is_active: props.product?.is_active ?? true,
     photo: null,
+    presentations: props.product?.presentations?.map((p) => ({
+        id: p.id,
+        name: p.name,
+        factor: p.factor,
+        price: p.price,
+        is_active: p.is_active,
+    })) ?? [],
 });
 
 const preview = ref(props.product?.photo_url ?? null);
@@ -132,6 +219,20 @@ const onFileChange = (event) => {
     if (!file) return;
     form.photo = file;
     preview.value = URL.createObjectURL(file);
+};
+
+const addPresentation = () => {
+    form.presentations.push({
+        id: null,
+        name: '',
+        factor: 1,
+        price: 0,
+        is_active: true,
+    });
+};
+
+const removePresentation = (index) => {
+    form.presentations.splice(index, 1);
 };
 
 const submit = () => {
