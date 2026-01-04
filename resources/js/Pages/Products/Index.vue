@@ -41,15 +41,15 @@
                         class="grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-12 md:items-center"
                     >
                         <div class="flex items-center gap-3 md:col-span-4">
-                            <div class="h-12 w-12 overflow-hidden rounded-xl bg-gray-850 ring-1 ring-black/20">
+                            <div class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-gray-850 ring-1 ring-black/20">
                                 <img
                                     v-if="product.photo_url"
                                     :src="product.photo_url"
                                     alt="Foto"
-                                    class="h-full w-full object-cover"
+                                    class="h-full w-full object-contain"
                                 />
                                 <div v-else class="flex h-full w-full items-center justify-center text-gray-600 text-xs">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="m3 7 6 6m0 0 4-4 8 8M13 13h6v6M3 5h6v6" />
                                     </svg>
                                 </div>

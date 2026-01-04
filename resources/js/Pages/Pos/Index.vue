@@ -10,12 +10,12 @@
                     <h1 class="text-2xl font-semibold text-gray-50">Punto de venta</h1>
                     <button
                         type="button"
-                        class="flex h-11 w-11 items-center justify-center rounded-full border border-gray-800/80 bg-gray-900/70 text-gray-200 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-red-400/80 hover:bg-red-500/15 hover:text-red-200 focus:outline-none focus:ring-2 focus:ring-red-400/50 active:translate-y-0"
+                        class="flex h-12 w-12 items-center justify-center rounded-full border border-gray-800/80 bg-gray-900/70 text-gray-200 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-red-400/80 hover:bg-red-500/15 hover:text-red-200 focus:outline-none focus:ring-2 focus:ring-red-400/50 active:scale-95"
                         aria-label="Cerrar sesión"
                         title="Cerrar sesión"
                         @click="logout"
                     >
-                        <i class="fa-solid fa-power-off text-lg"></i>
+                        <i class="fa-solid fa-power-off text-xl"></i>
                     </button>
                 </div>
                 <div class="rounded-3xl bg-gray-900 p-4 shadow-lg ring-1 ring-black/30 space-y-3">
@@ -35,7 +35,7 @@
                         </div>
                         <button
                             type="button"
-                            class="hidden sm:flex items-center gap-2 rounded-2xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:translate-y-0"
+                            class="hidden sm:flex items-center gap-2 rounded-2xl bg-amber-400 px-5 py-3.5 text-base font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-150 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:scale-95"
                             @click="startScanner"
                         >
                             <i class="fa-solid fa-qrcode text-base"></i>
@@ -44,7 +44,7 @@
                     </div>
                     <button
                         type="button"
-                        class="sm:hidden flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:translate-y-0"
+                        class="sm:hidden flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-5 py-3.5 text-base font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-150 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:scale-95"
                         @click="startScanner"
                     >
                         <i class="fa-solid fa-qrcode text-base"></i>
@@ -91,7 +91,7 @@
                                     <div class="text-lg font-semibold text-gray-50">Q{{ formatPrice(product.price) }}</div>
                                     <button
                                         type="button"
-                                        class="flex items-center gap-2 rounded-2xl bg-amber-400 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:translate-y-0"
+                                        class="flex items-center gap-2 rounded-2xl bg-amber-400 px-5 py-3 text-base font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-150 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:scale-95"
                                         @click="openSale(product)"
                                     >
                                         <i class="fa-solid fa-cart-plus text-base"></i>

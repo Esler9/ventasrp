@@ -3,7 +3,7 @@
         <div class="mx-auto flex max-w-6xl items-center justify-around px-4 pt-3 pb-4 text-xs text-gray-300">
             <Link
                 :href="routes.pos"
-                class="flex flex-col items-center gap-1 transition-colors duration-150 hover:text-amber-200"
+                class="flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-sm transition-all duration-150 hover:text-amber-200 active:scale-95"
                 :class="isActive('pos')"
             >
                 <i class="fa-solid fa-cash-register text-base"></i>
@@ -11,7 +11,7 @@
             </Link>
             <Link
                 :href="routes.products"
-                class="flex flex-col items-center gap-1 transition-colors duration-150 hover:text-amber-200"
+                class="flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-sm transition-all duration-150 hover:text-amber-200 active:scale-95"
                 :class="isActive('products')"
             >
                 <i class="fa-solid fa-box-open text-base"></i>
@@ -19,7 +19,7 @@
             </Link>
             <Link
                 :href="routes.sales"
-                class="flex flex-col items-center gap-1 transition-colors duration-150 hover:text-amber-200"
+                class="flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-sm transition-all duration-150 hover:text-amber-200 active:scale-95"
                 :class="isActive('sales')"
             >
                 <i class="fa-solid fa-receipt text-base"></i>
@@ -27,7 +27,7 @@
             </Link>
             <Link
                 :href="routes.panel"
-                class="flex flex-col items-center gap-1 transition-colors duration-150 hover:text-amber-200"
+                class="flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-sm transition-all duration-150 hover:text-amber-200 active:scale-95"
                 :class="isActive('panel')"
             >
                 <i class="fa-solid fa-gauge-high text-base"></i>
