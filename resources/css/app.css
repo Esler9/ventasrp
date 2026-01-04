@@ -78,6 +78,10 @@ body {
     background-color: color-mix(in srgb, var(--bg-950) 80%, transparent) !important;
 }
 
+.bg-gray-950\/60 {
+    background-color: color-mix(in srgb, var(--bg-950) 60%, transparent) !important;
+}
+
 .bg-gray-850 {
     background-color: var(--bg-850) !important;
 }
