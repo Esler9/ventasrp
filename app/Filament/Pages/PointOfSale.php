@@ -70,12 +70,17 @@ class PointOfSale extends Page
                 $builder->where(function ($subQuery) use ($query) {
                     $subQuery
                         ->where('name', 'like', '%' . $query . '%')
-                        ->orWhere('sku', 'like', '%' . $query . '%');
+                        ->orWhere('sku', 'like', '%' . $query . '%')
+                        ->orWhere('description', 'like', '%' . $query . '%');
                 });
+                $builder->orderByRaw(
+                    "CASE WHEN name LIKE ? THEN 0 WHEN sku LIKE ? THEN 1 WHEN description LIKE ? THEN 2 ELSE 3 END",
+                    ["%{$query}%", "%{$query}%", "%{$query}%"]
+                );
             })
             ->orderBy('name')
             ->limit(20)
-            ->get(['id', 'name', 'sku', 'price', 'stock', 'expires_at']);
+            ->get(['id', 'name', 'description', 'sku', 'price', 'stock', 'expires_at']);
     }
 
     public function openConfirm(int $productId): void

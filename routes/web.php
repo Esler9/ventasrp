@@ -39,13 +39,18 @@ Route::middleware(['web', 'auth'])->get('/pos', function (\Illuminate\Http\Reque
     $q = trim((string) $request->query('q', ''));
 
     $products = Product::query()
-        ->select(['id', 'name', 'sku', 'stock', 'price', 'expires_at', 'photo'])
+        ->select(['id', 'name', 'description', 'sku', 'stock', 'price', 'expires_at', 'photo'])
         ->where('is_active', true)
         ->when($q !== '', function ($builder) use ($q) {
             $builder->where(function ($sub) use ($q) {
                 $sub->where('name', 'like', "%{$q}%")
-                    ->orWhere('sku', 'like', "%{$q}%");
+                    ->orWhere('sku', 'like', "%{$q}%")
+                    ->orWhere('description', 'like', "%{$q}%");
             });
+            $builder->orderByRaw(
+                "CASE WHEN name LIKE ? THEN 0 WHEN sku LIKE ? THEN 1 WHEN description LIKE ? THEN 2 ELSE 3 END",
+                ["%{$q}%", "%{$q}%", "%{$q}%"]
+            );
         })
         ->orderBy('name')
         ->limit(20)

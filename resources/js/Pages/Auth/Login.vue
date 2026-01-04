@@ -1,5 +1,6 @@
 <template>
     <div class="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center px-4">
+        <GlobalLoader />
         <div class="w-full max-w-md rounded-3xl bg-gray-900/80 p-8 ring-1 ring-black/30 shadow-2xl space-y-6 fade-in-soft">
             <div class="text-center space-y-2">
                 <div class="mx-auto h-14 w-14 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-400">
@@ -103,6 +104,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import GlobalLoader from '../../Components/GlobalLoader.vue';
 
 const form = useForm({
     method: 'pin',

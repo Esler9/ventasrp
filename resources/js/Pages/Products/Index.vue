@@ -16,12 +16,12 @@
                             class="w-full rounded-xl border border-gray-800 bg-gray-950/80 py-2.5 pl-9 pr-3 text-sm text-gray-100 placeholder-gray-500 focus:border-amber-400 focus:ring-amber-400"
                         />
                     </div>
-                    <a
+                    <Link
                         href="/admin/products/create"
                         class="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-black shadow hover:bg-amber-300"
                     >
                         Crear producto
-                    </a>
+                    </Link>
                 </div>
             </div>
 
@@ -56,6 +56,7 @@
                             </div>
                             <div>
                                 <p class="font-semibold text-gray-50">{{ product.name }}</p>
+                                <p class="text-xs text-gray-400">{{ shortDescription(product.description) }}</p>
                                 <p class="text-xs text-gray-500">Vence: {{ product.expires_at || '—' }}</p>
                                 <p class="text-xs text-gray-500">Activo: {{ product.is_active ? 'Sí' : 'No' }}</p>
                             </div>
@@ -70,12 +71,12 @@
                             <p class="text-sm text-gray-200">{{ product.stock }}</p>
                         </div>
                         <div class="flex gap-2 md:col-span-2 md:justify-end">
-                            <a
+                            <Link
                                 :href="`/admin/products/${product.id}/edit`"
                                 class="rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-100 hover:bg-gray-800"
                             >
                                 Editar
-                            </a>
+                            </Link>
                         </div>
                     </article>
                 </div>
@@ -110,7 +111,7 @@
 
 <script setup>
 import { ref, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -141,6 +142,10 @@ const debouncedSearch = debounce((value) => {
 watch(search, (val) => debouncedSearch(val));
 
 const formatPrice = (val) => Number(val ?? 0).toFixed(2);
+const shortDescription = (text) => {
+    if (!text) return 'Sin descripción';
+    return text.length > 90 ? `${text.slice(0, 87)}...` : text;
+};
 
 const goTo = (link) => {
     if (link) {

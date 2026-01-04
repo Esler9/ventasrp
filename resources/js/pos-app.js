@@ -1,7 +1,8 @@
 import './bootstrap';
 import '../css/app.css';
 import { createApp, h } from 'vue';
-import { createInertiaApp } from '@inertiajs/vue3';
+import { createInertiaApp, router } from '@inertiajs/vue3';
+import { startGlobalLoader, stopGlobalLoader } from './composables/useGlobalLoader';
 
 createInertiaApp({
     resolve: (name) => {
@@ -14,3 +15,7 @@ createInertiaApp({
             .mount(el);
     },
 });
+
+router.on('start', () => startGlobalLoader());
+router.on('finish', () => stopGlobalLoader());
+router.on('error', () => stopGlobalLoader());

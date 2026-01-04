@@ -21,6 +21,15 @@
                             required
                         />
                     </div>
+                    <div class="space-y-1 md:col-span-2">
+                        <label class="text-sm text-gray-300">Descripción (opcional)</label>
+                        <textarea
+                            v-model="form.description"
+                            rows="3"
+                            class="w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
+                            placeholder="Resumen breve del producto"
+                        ></textarea>
+                    </div>
                     <div class="space-y-1">
                         <label class="text-sm text-gray-300">Precio (Q)</label>
                         <input
@@ -75,9 +84,9 @@
                 </div>
 
                 <div class="flex justify-end gap-2">
-                    <a href="/admin/products" class="rounded-lg border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-100 hover:bg-gray-800">
+                    <Link href="/admin/products" class="rounded-lg border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-100 hover:bg-gray-800">
                         Cancelar
-                    </a>
+                    </Link>
                     <button
                         type="submit"
                         class="rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-black shadow hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -93,7 +102,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -105,6 +114,7 @@ const props = defineProps({
 
 const form = useForm({
     name: props.product?.name ?? '',
+    description: props.product?.description ?? '',
     sku: props.product?.sku ?? '',
     price: props.product?.price ?? '',
     stock: props.product?.stock ?? 0,

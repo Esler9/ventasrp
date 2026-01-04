@@ -17,19 +17,25 @@ class ProductController extends Controller
         $q = trim((string) $request->query('q', ''));
 
         $products = Product::query()
-            ->select(['id', 'name', 'sku', 'price', 'stock', 'expires_at', 'is_active', 'photo'])
+            ->select(['id', 'name', 'description', 'sku', 'price', 'stock', 'expires_at', 'is_active', 'photo'])
             ->where('is_active', true)
             ->when($q !== '', function ($builder) use ($q) {
                 $builder->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
-                        ->orWhere('sku', 'like', "%{$q}%");
+                        ->orWhere('sku', 'like', "%{$q}%")
+                        ->orWhere('description', 'like', "%{$q}%");
                 });
+                $builder->orderByRaw(
+                    "CASE WHEN name LIKE ? THEN 0 WHEN sku LIKE ? THEN 1 WHEN description LIKE ? THEN 2 ELSE 3 END",
+                    ["%{$q}%", "%{$q}%", "%{$q}%"]
+                );
             })
             ->orderBy('name')
             ->paginate(10)
             ->through(fn ($product) => [
                 'id' => $product->id,
                 'name' => $product->name,
+                'description' => $product->description,
                 'sku' => $product->sku,
                 'price' => $product->price,
                 'stock' => $product->stock,
@@ -58,6 +64,7 @@ class ProductController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:2000'],
             'sku' => ['required', 'string', 'max:255', 'unique:products,sku'],
             'price' => ['required', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
@@ -82,6 +89,7 @@ class ProductController extends Controller
             'product' => [
                 'id' => $product->id,
                 'name' => $product->name,
+                'description' => $product->description,
                 'sku' => $product->sku,
                 'price' => $product->price,
                 'stock' => $product->stock,
@@ -97,6 +105,7 @@ class ProductController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:2000'],
             'sku' => ['required', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($product->id)],
             'price' => ['required', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],

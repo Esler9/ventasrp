@@ -1,5 +1,6 @@
 <template>
     <div class="min-h-screen bg-gray-950 text-gray-100">
+        <GlobalLoader />
         <div class="max-w-5xl mx-auto px-4 pt-6 space-y-6 fade-in-soft" :style="contentSafeArea">
             <header class="space-y-3">
                 <div class="flex items-start justify-between gap-3">
@@ -80,6 +81,9 @@
                                 <div class="space-y-1">
                                     <div class="text-base font-semibold text-gray-50">{{ product.name }}</div>
                                     <div class="text-xs text-gray-400">SKU: {{ product.sku }}</div>
+                                    <div class="text-xs text-gray-400">
+                                        {{ shortDescription(product.description) }}
+                                    </div>
                                     <div class="text-xs text-gray-400">Stock: {{ product.stock }}</div>
                                     <div v-if="product.expires_at" class="text-xs text-gray-400">
                                         Vence: {{ product.expires_at }}
@@ -274,6 +278,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import BottomNav from '../../Components/BottomNav.vue';
+import GlobalLoader from '../../Components/GlobalLoader.vue';
 import Quagga from '@ericblade/quagga2';
 import jsQR from 'jsqr';
 
@@ -342,6 +347,10 @@ watch(search, (val) => {
 });
 
 const formatPrice = (val) => Number(val ?? 0).toFixed(2);
+const shortDescription = (text) => {
+    if (!text) return 'Sin descripción';
+    return text.length > 90 ? `${text.slice(0, 87)}...` : text;
+};
 
 const startScanner = async () => {
     scannerError.value = '';
