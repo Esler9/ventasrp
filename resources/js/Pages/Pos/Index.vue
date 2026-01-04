@@ -6,14 +6,18 @@
         </div>
         <div class="max-w-5xl mx-auto px-4 pt-6 space-y-6 fade-in-soft" :style="contentSafeArea">
             <header class="space-y-3">
-                <div class="flex items-start justify-between gap-3">
+                <div class="flex items-start justify-between gap-4">
                     <h1 class="text-2xl font-semibold text-gray-50">Punto de venta</h1>
                     <button
                         type="button"
-                        class="rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold text-gray-200 hover:bg-gray-800 hover-lift"
+                        class="flex h-11 w-11 items-center justify-center rounded-full border border-gray-800/80 bg-gray-900/70 text-gray-200 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-red-400/80 hover:bg-red-500/15 hover:text-red-200 focus:outline-none focus:ring-2 focus:ring-red-400/50 active:translate-y-0"
+                        aria-label="Cerrar sesión"
+                        title="Cerrar sesión"
                         @click="logout"
                     >
-                        Cerrar sesión
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5V3m0 18v-2m5.657-12.657 1.414-1.414m-12.728 0L4.93 6.343M21 12h-8m0 0 2.5-2.5M13 12l2.5 2.5M6 8v8a4 4 0 0 0 4 4h0" />
+                        </svg>
                     </button>
                 </div>
                 <div class="rounded-3xl bg-gray-900 p-4 shadow-lg ring-1 ring-black/30 space-y-3">
@@ -33,26 +37,24 @@
                         </div>
                         <button
                             type="button"
-                            class="hidden sm:flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black shadow hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            class="hidden sm:flex items-center gap-2 rounded-2xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:translate-y-0"
                             @click="startScanner"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h2l1-2h6l1 2h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6v6H9z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 12h.01M17 12h.01" />
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 5h4M5 19h4M15 5h4M15 19h4M5 9h4m6 0h4M5 13h4m6 0h4M5 17h4m6 0h4" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5v4m6-4v4M9 15v4m6-4v4M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
                             </svg>
                             Escanear
                         </button>
                     </div>
                     <button
                         type="button"
-                        class="sm:hidden flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black shadow hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        class="sm:hidden flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:translate-y-0"
                         @click="startScanner"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h2l1-2h6l1 2h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6v6H9z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 12h.01M17 12h.01" />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5h4M5 19h4M15 5h4M15 19h4M5 9h4m6 0h4M5 13h4m6 0h4M5 17h4m6 0h4" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5v4m6-4v4M9 15v4m6-4v4M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
                         </svg>
                         Escanear
                     </button>
@@ -97,11 +99,14 @@
                                     <div class="text-lg font-semibold text-gray-50">Q{{ formatPrice(product.price) }}</div>
                                     <button
                                         type="button"
-                                        class="flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-black shadow hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                        class="flex items-center gap-2 rounded-2xl bg-amber-400 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:translate-y-0"
                                         @click="openSale(product)"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h11l1-5H6.4M7 13 5.4 5M7 13l-2 9h14M10 21a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm8 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" />
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12l-1 10H7L6 7Z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M10 11h4" />
+                                            <circle cx="10" cy="18" r="1.2" />
+                                            <circle cx="14" cy="18" r="1.2" />
                                         </svg>
                                         Vender
                                     </button>
