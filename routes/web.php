@@ -33,7 +33,6 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 
 // Redirecciones de compatibilidad
 Route::get('/admin/login', fn () => redirect('/login'));
-Route::get('/filament/login', fn () => redirect('/login'));
 
 Route::middleware(['web', 'auth'])->get('/pos', function (\Illuminate\Http\Request $request) {
     $q = trim((string) $request->query('q', ''));
