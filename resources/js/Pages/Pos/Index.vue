@@ -15,9 +15,7 @@
                         title="Cerrar sesión"
                         @click="logout"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5V3m0 18v-2m5.657-12.657 1.414-1.414m-12.728 0L4.93 6.343M21 12h-8m0 0 2.5-2.5M13 12l2.5 2.5M6 8v8a4 4 0 0 0 4 4h0" />
-                        </svg>
+                        <i class="fa-solid fa-power-off text-lg"></i>
                     </button>
                 </div>
                 <div class="rounded-3xl bg-gray-900 p-4 shadow-lg ring-1 ring-black/30 space-y-3">
@@ -40,10 +38,7 @@
                             class="hidden sm:flex items-center gap-2 rounded-2xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:translate-y-0"
                             @click="startScanner"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 5h4M5 19h4M15 5h4M15 19h4M5 9h4m6 0h4M5 13h4m6 0h4M5 17h4m6 0h4" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5v4m6-4v4M9 15v4m6-4v4M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
-                            </svg>
+                            <i class="fa-solid fa-qrcode text-base"></i>
                             Escanear
                         </button>
                     </div>
@@ -52,10 +47,7 @@
                         class="sm:hidden flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:translate-y-0"
                         @click="startScanner"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5h4M5 19h4M15 5h4M15 19h4M5 9h4m6 0h4M5 13h4m6 0h4M5 17h4m6 0h4" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5v4m6-4v4M9 15v4m6-4v4M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
-                        </svg>
+                        <i class="fa-solid fa-qrcode text-base"></i>
                         Escanear
                     </button>
                 </div>
@@ -102,12 +94,7 @@
                                         class="flex items-center gap-2 rounded-2xl bg-amber-400 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-amber-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 active:translate-y-0"
                                         @click="openSale(product)"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12l-1 10H7L6 7Z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M10 11h4" />
-                                            <circle cx="10" cy="18" r="1.2" />
-                                            <circle cx="14" cy="18" r="1.2" />
-                                        </svg>
+                                        <i class="fa-solid fa-cart-plus text-base"></i>
                                         Vender
                                     </button>
                                 </div>

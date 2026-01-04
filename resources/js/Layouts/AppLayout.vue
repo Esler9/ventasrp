@@ -19,9 +19,7 @@
                         title="Cerrar sesión"
                         @click="logout"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5V3m0 18v-2m5.657-12.657 1.414-1.414m-12.728 0L4.93 6.343M21 12h-8m0 0 2.5-2.5M13 12l2.5 2.5M6 8v8a4 4 0 0 0 4 4h0" />
-                        </svg>
+                        <i class="fa-solid fa-power-off text-lg"></i>
                     </button>
                 </div>
             </div>
