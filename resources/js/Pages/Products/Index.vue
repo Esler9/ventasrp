@@ -28,7 +28,7 @@
             <div class="overflow-hidden rounded-2xl bg-gray-900/80 ring-1 ring-black/30">
                 <div class="hidden grid-cols-12 gap-2 bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-300 md:grid">
                     <div class="col-span-4">Producto</div>
-                    <div class="col-span-2">SKU</div>
+                    <div class="col-span-2">Descripción</div>
                     <div class="col-span-2 text-right">Precio</div>
                     <div class="col-span-2 text-right">Stock</div>
                     <div class="col-span-2 text-right">Acciones</div>
@@ -56,13 +56,13 @@
                             </div>
                             <div>
                                 <p class="font-semibold text-gray-50">{{ product.name }}</p>
-                                <p class="text-xs text-gray-400">{{ shortDescription(product.description) }}</p>
+                                <p class="text-xs text-gray-500">SKU: {{ product.sku }}</p>
                                 <p class="text-xs text-gray-500">Vence: {{ product.expires_at || '—' }}</p>
                                 <p class="text-xs text-gray-500">Activo: {{ product.is_active ? 'Sí' : 'No' }}</p>
                             </div>
                         </div>
                         <div class="md:col-span-2 md:text-left">
-                            <p class="text-sm text-gray-200">{{ product.sku }}</p>
+                            <p class="text-sm text-gray-200 leading-snug">{{ shortDescription(product.description) }}</p>
                         </div>
                         <div class="md:col-span-2 md:text-right">
                             <p class="text-sm font-semibold text-gray-100">Q{{ formatPrice(product.price) }}</p>
