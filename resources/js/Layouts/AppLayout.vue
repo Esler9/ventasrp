@@ -14,6 +14,15 @@
                     <slot name="actions" />
                     <button
                         type="button"
+                        class="flex h-10 w-10 items-center justify-center rounded-full border border-gray-700/80 bg-gray-850 text-gray-200 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400/80 hover:bg-amber-500/10 hover:text-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-400/50 active:scale-95"
+                        aria-label="Cambiar tema"
+                        title="Cambiar tema"
+                        @click="toggleTheme"
+                    >
+                        <i :class="theme === 'dark' ? 'fa-solid fa-sun text-lg' : 'fa-solid fa-moon text-lg'"></i>
+                    </button>
+                    <button
+                        type="button"
                         class="flex h-10 w-10 items-center justify-center rounded-full border border-gray-700/80 bg-gray-850 text-gray-200 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-red-400/80 hover:bg-red-500/15 hover:text-red-200 focus:outline-none focus:ring-2 focus:ring-red-400/50 active:translate-y-0"
                         aria-label="Cerrar sesión"
                         title="Cerrar sesión"
@@ -38,6 +47,7 @@ import { useForm } from '@inertiajs/vue3';
 import BottomNav from '../Components/BottomNav.vue';
 import GlobalLoader from '../Components/GlobalLoader.vue';
 import FlashBanner from '../Components/FlashBanner.vue';
+import { useTheme } from '../composables/useTheme';
 
 defineProps({
     title: {
@@ -47,6 +57,7 @@ defineProps({
 });
 
 const logoutForm = useForm({});
+const { theme, toggleTheme } = useTheme();
 
 const logout = () => {
     logoutForm.post('/logout');

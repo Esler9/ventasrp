@@ -10,6 +10,106 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
+:root {
+    --bg-950: #0f172a;
+    --bg-900: #111827;
+    --bg-850: #1f2937;
+    --bg-800: #1f2937;
+    --text-50: #f9fafb;
+    --text-100: #f3f4f6;
+    --text-200: #e5e7eb;
+    --text-300: #d1d5db;
+    --text-400: #9ca3af;
+    --text-500: #6b7280;
+    --border-700: #374151;
+    --border-800: #1f2937;
+}
+
+[data-theme='light'] {
+    --bg-950: #f8fafc;
+    --bg-900: #ffffff;
+    --bg-850: #f1f5f9;
+    --bg-800: #e2e8f0;
+    --text-50: #0f172a;
+    --text-100: #0f172a;
+    --text-200: #1f2937;
+    --text-300: #334155;
+    --text-400: #475569;
+    --text-500: #64748b;
+    --border-700: #cbd5e1;
+    --border-800: #cbd5e1;
+}
+
+body {
+    background-color: var(--bg-950);
+    color: var(--text-100);
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.bg-gray-950 {
+    background-color: var(--bg-950) !important;
+}
+
+.bg-gray-900 {
+    background-color: var(--bg-900) !important;
+}
+
+.bg-gray-900\/80 {
+    background-color: color-mix(in srgb, var(--bg-900) 80%, transparent) !important;
+}
+
+.bg-gray-900\/70 {
+    background-color: color-mix(in srgb, var(--bg-900) 70%, transparent) !important;
+}
+
+.bg-gray-900\/60 {
+    background-color: color-mix(in srgb, var(--bg-900) 60%, transparent) !important;
+}
+
+.bg-gray-950\/80 {
+    background-color: color-mix(in srgb, var(--bg-950) 80%, transparent) !important;
+}
+
+.bg-gray-850 {
+    background-color: var(--bg-850) !important;
+}
+
+.bg-gray-800 {
+    background-color: var(--bg-800) !important;
+}
+
+.text-gray-50 {
+    color: var(--text-50) !important;
+}
+
+.text-gray-100 {
+    color: var(--text-100) !important;
+}
+
+.text-gray-200 {
+    color: var(--text-200) !important;
+}
+
+.text-gray-300 {
+    color: var(--text-300) !important;
+}
+
+.text-gray-400 {
+    color: var(--text-400) !important;
+}
+
+.text-gray-500 {
+    color: var(--text-500) !important;
+}
+
+.border-gray-700 {
+    border-color: var(--border-700) !important;
+}
+
+.border-gray-800 {
+    border-color: var(--border-800) !important;
+}
+
 @layer utilities {
     .fade-in-soft {
         animation: fade-in-soft 320ms ease-out;

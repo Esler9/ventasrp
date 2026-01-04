@@ -8,6 +8,16 @@
             <header class="space-y-3">
                 <div class="flex items-start justify-between gap-4">
                     <h1 class="text-2xl font-semibold text-gray-50">Punto de venta</h1>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            class="flex h-11 w-11 items-center justify-center rounded-full border border-gray-800/80 bg-gray-900/70 text-gray-200 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400/80 hover:bg-amber-500/10 hover:text-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-400/50 active:scale-95"
+                            aria-label="Cambiar tema"
+                            title="Cambiar tema"
+                            @click="toggleTheme"
+                        >
+                            <i :class="theme === 'dark' ? 'fa-solid fa-sun text-lg' : 'fa-solid fa-moon text-lg'"></i>
+                        </button>
                     <button
                         type="button"
                         class="flex h-12 w-12 items-center justify-center rounded-full border border-gray-800/80 bg-gray-900/70 text-gray-200 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-red-400/80 hover:bg-red-500/15 hover:text-red-200 focus:outline-none focus:ring-2 focus:ring-red-400/50 active:scale-95"
@@ -17,6 +27,7 @@
                     >
                         <i class="fa-solid fa-power-off text-xl"></i>
                     </button>
+                    </div>
                 </div>
                 <div class="rounded-3xl bg-gray-900 p-4 shadow-lg ring-1 ring-black/30 space-y-3">
                     <div class="flex items-center gap-3">
@@ -301,6 +312,7 @@ import GlobalLoader from '../../Components/GlobalLoader.vue';
 import FlashBanner from '../../Components/FlashBanner.vue';
 import Quagga from '@ericblade/quagga2';
 import jsQR from 'jsqr';
+import { useTheme } from '../../composables/useTheme';
 
 const props = defineProps({
     products: {
@@ -327,6 +339,7 @@ const scannerError = ref('');
 const videoRef = ref(null);
 const fallbackManual = ref(false);
 const fileInputRef = ref(null);
+const { theme, toggleTheme } = useTheme();
 let mediaStream = null;
 let detector = null;
 let quaggaRunning = false;
