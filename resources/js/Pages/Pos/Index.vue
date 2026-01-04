@@ -127,7 +127,7 @@
         >
             <div class="flex items-center justify-between text-gray-100">
                 <h3 class="text-lg font-semibold">Escanear código</h3>
-                <button type="button" class="text-sm text-gray-300 underline" @click="stopScanner">Cerrar</button>
+                <button type="button" class="text-sm text-gray-300 underline" @click="stopScanner(false)">Cerrar</button>
             </div>
             <div v-if="!fallbackManual" class="relative flex-1 rounded-2xl border border-gray-800 bg-black overflow-hidden">
                 <video ref="videoRef" class="h-full w-full object-cover" autoplay playsinline muted></video>
@@ -174,7 +174,7 @@
             <button
                 type="button"
                 class="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-100 hover:bg-gray-800"
-                @click="stopScanner"
+                @click="stopScanner(false)"
             >
                 Cerrar
             </button>
