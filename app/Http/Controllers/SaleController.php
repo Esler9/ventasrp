@@ -21,9 +21,14 @@ class SaleController extends Controller
         $query = SaleItem::query()
             ->with(['product', 'sale.seller'])
             ->when($q !== '', function ($builder) use ($q) {
-                $builder->whereHas('product', function ($product) use ($q) {
-                    $product->where('name', 'like', "%{$q}%")
-                        ->orWhere('sku', 'like', "%{$q}%");
+                $builder->where(function ($query) use ($q) {
+                    $query->whereHas('product', function ($product) use ($q) {
+                        $product->where('name', 'like', "%{$q}%")
+                            ->orWhere('sku', 'like', "%{$q}%");
+                    })->orWhereHas('sale', function ($sale) use ($q) {
+                        $sale->where('sale_code', 'like', "%{$q}%")
+                            ->orWhere('customer_name', 'like', "%{$q}%");
+                    });
                 });
             })
             ->when($dateFrom, function ($builder) use ($dateFrom) {
@@ -44,6 +49,8 @@ class SaleController extends Controller
                 'id' => $item->id,
                 'product' => $item->product?->name,
                 'sku' => $item->product?->sku,
+                'sale_code' => $item->sale?->sale_code,
+                'customer_name' => $item->sale?->customer_name,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'original_price' => $item->original_price,

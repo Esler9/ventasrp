@@ -26,7 +26,7 @@
                     <input
                         v-model="filtersForm.q"
                         type="text"
-                        placeholder="Producto o SKU"
+                        placeholder="Código, cliente, producto o SKU"
                         class="w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
                     />
                 </div>
@@ -88,6 +88,7 @@
                 <article v-for="item in items.data" :key="item.id" class="grid grid-cols-1 gap-2 px-4 py-3 md:grid-cols-12 md:items-center">
                     <div class="md:col-span-3">
                         <p class="font-semibold text-gray-50">{{ item.product }}</p>
+                        <p class="text-xs text-gray-400">Venta: {{ item.sale_code || '—' }} · Cliente: {{ item.customer_name || 'CF' }}</p>
                         <p class="text-xs text-gray-500">{{ item.created_at }}</p>
                     </div>
                     <div class="md:col-span-2">

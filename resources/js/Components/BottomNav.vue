@@ -122,10 +122,10 @@ const moreItems = computed(() => [
     {
         key: 'cash',
         label: 'Caja',
-        href: null,
-        enabled: can('cash.view') && false,
-        disabledReason: can('cash.view') ? 'Disponible en la siguiente fase.' : 'Sin permiso para Caja.',
-        disabledTag: can('cash.view') ? 'Próximamente' : 'Sin permiso',
+        href: '/admin/cash',
+        enabled: can('cash.view'),
+        disabledReason: 'Sin permiso para Caja.',
+        disabledTag: 'Sin permiso',
     },
     {
         key: 'reports',

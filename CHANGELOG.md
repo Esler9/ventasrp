@@ -12,3 +12,13 @@
 - Se actualizó gestión de usuarios para selección de los 5 roles.
 - Se añadió migración para normalizar roles legacy en BD.
 - Se añadieron tests feature de autorización y shared props.
+
+## 2026-02-15 - Caja + POS multi-producto (flujo operativo)
+- Se implementó módulo de caja con apertura, movimientos (ingreso/gasto) y cierre con arqueo.
+- Se agregaron entidades y migraciones: `cash_registers`, `cash_sessions`, `cash_movements`, `sale_payments`.
+- Se extendió `sales` para soportar `sale_code`, `customer_name` (default CF) y referencia a sesión de caja.
+- Se rediseñó POS para carrito multi-producto en una sola venta.
+- Se habilitó registro de pagos por método y validación de total pagado.
+- Se agregó restricción: no se puede vender sin caja abierta.
+- Se actualizó navegación para acceso directo a `Caja` desde menú móvil.
+- Se añadieron tests de flujo: apertura de caja + venta multi-item + control de stock.

@@ -39,17 +39,17 @@
 - [ ] Sistema de componentes base (button/input/card/tab/modal/toast/skeleton).
 
 ### Fase C: POS ultra rápido
-- [ ] Rehacer flujo a carrito multi-item con autocompletado debounced.
-- [ ] Cliente obligatorio con default CF.
+- [x] Rehacer flujo a carrito multi-item con autocompletado debounced.
+- [x] Cliente obligatorio con default CF.
 - [ ] Pagos mixtos por venta.
 - [ ] Restricciones `change_price` por permiso.
 - [ ] Series/IMEI (obligatorio/opcional por producto).
 - [ ] Cotización/pendiente y conversión 1 clic sin reservar stock.
 
 ### Fase D: Caja completa
-- [ ] Modelo caja/sesiones/movimientos/cierres con arqueo.
+- [x] Modelo caja/sesiones/movimientos/cierres con arqueo.
 - [ ] Asignación de caja a vendedor (máx. 3 por sucursal).
-- [ ] Totales por método (incluyendo mixtos) y trazabilidad de usuario/fecha.
+- [x] Totales por método (incluyendo mixtos) y trazabilidad de usuario/fecha.
 
 ### Fase E: Clientes + CxC
 - [ ] Entidad clientes completa + límite de crédito.

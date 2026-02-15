@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\AppSetting;
+use App\Models\CashRegister;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -20,6 +21,14 @@ class DatabaseSeeder extends Seeder
         AppSetting::firstOrCreate([], [
             'app_icon_color' => '#f59e0b',
         ]);
+
+        CashRegister::firstOrCreate(
+            ['name' => 'Caja #01'],
+            [
+                'branch_name' => 'Sucursal Centro',
+                'is_active' => true,
+            ],
+        );
 
         User::updateOrCreate(
             ['email' => 'admin@example.com'],

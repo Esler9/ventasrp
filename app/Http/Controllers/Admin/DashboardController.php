@@ -42,6 +42,15 @@ class DashboardController extends Controller
                 'button' => 'Ver ventas',
             ],
             [
+                'key' => 'cash',
+                'title' => 'Caja',
+                'headline' => 'Apertura y cierre',
+                'description' => 'Arqueo y movimientos de caja',
+                'href' => '/admin/cash',
+                'permission' => 'cash.view',
+                'button' => 'Ir a caja',
+            ],
+            [
                 'key' => 'users',
                 'title' => 'Usuarios',
                 'headline' => 'Equipo y accesos',
