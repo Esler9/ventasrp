@@ -1,149 +1,189 @@
 <template>
-    <div class="min-h-screen bg-gray-950 text-gray-100">
+    <div class="min-h-screen bg-slate-950 text-slate-100">
         <GlobalLoader />
         <div class="px-4 pt-3">
             <FlashBanner />
         </div>
 
-        <div class="mx-auto max-w-6xl space-y-4 px-4 pb-36 pt-4" :style="contentSafeArea">
-            <header class="rounded-2xl border border-gray-800 bg-gray-900/70 p-4 space-y-3">
-                <div class="flex items-start justify-between gap-3">
+        <header class="sticky top-0 z-20 border-b border-slate-800 bg-slate-900/80 px-4 pb-3 pt-4 backdrop-blur">
+            <div class="mx-auto flex max-w-6xl items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <button type="button" class="flex h-11 w-11 items-center justify-center rounded-full bg-slate-800/80 text-slate-300">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
                     <div>
-                        <h1 class="text-xl font-semibold">POS</h1>
-                        <p class="text-xs text-gray-400">Venta por código y cliente (CF por defecto)</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button" class="h-10 w-10 rounded-full border border-gray-700 bg-gray-950/60" @click="toggleTheme" title="Tema">
-                            <i :class="theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'"></i>
-                        </button>
-                        <button type="button" class="h-10 w-10 rounded-full border border-gray-700 bg-gray-950/60" @click="logout" title="Salir">
-                            <i class="fa-solid fa-power-off"></i>
-                        </button>
+                        <p class="text-xl font-semibold">Nueva Venta #{{ displaySaleCode }}</p>
+                        <p class="text-xs text-slate-400">Cliente: {{ saleForm.customer_name || 'CF' }}</p>
                     </div>
                 </div>
-
-                <div v-if="!openCashSession" class="rounded-xl border border-red-700/60 bg-red-900/20 p-3 text-sm text-red-200">
-                    Debes abrir caja antes de vender.
-                    <a href="/admin/cash" class="underline font-semibold">Ir a Caja</a>
+                <div class="flex items-center gap-2">
+                    <button type="button" class="relative flex h-11 w-11 items-center justify-center rounded-full bg-slate-800/80 text-slate-300">
+                        <i class="fa-solid fa-bell"></i>
+                        <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500"></span>
+                    </button>
+                    <button type="button" class="flex h-11 w-11 items-center justify-center rounded-full bg-slate-800/80 text-slate-300" @click="toggleTheme" title="Tema">
+                        <i :class="theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'"></i>
+                    </button>
+                    <button type="button" class="flex h-11 w-11 items-center justify-center rounded-full bg-slate-800/80 text-slate-300" @click="logout" title="Salir">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>
                 </div>
-                <div v-else class="rounded-xl border border-emerald-700/40 bg-emerald-900/10 p-3 text-xs text-emerald-200">
-                    Caja activa: {{ openCashSession.register }} · {{ openCashSession.branch }}
+            </div>
+        </header>
+
+        <div class="mx-auto max-w-6xl space-y-4 px-4 pb-64 pt-4" :style="contentSafeArea">
+            <div v-if="!openCashSession" class="rounded-xl border border-rose-700/60 bg-rose-900/20 p-3 text-sm text-rose-200">
+                Debes abrir caja antes de vender.
+                <a href="/admin/cash" class="font-semibold underline">Ir a Caja</a>
+            </div>
+
+            <section class="space-y-3">
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input
+                        v-model="search"
+                        type="text"
+                        placeholder="Buscar producto (Código, Nombre)..."
+                        class="w-full rounded-2xl border border-slate-700 bg-slate-900/70 py-3 pl-10 pr-14 text-sm text-slate-100 placeholder-slate-500 focus:border-sky-400 focus:outline-none"
+                    />
+                    <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl bg-slate-700/80 px-3 py-2 text-slate-200" title="Buscar por código">
+                        <i class="fa-solid fa-qrcode"></i>
+                    </button>
                 </div>
 
-                <div class="grid gap-3 md:grid-cols-3">
-                    <div class="space-y-1">
-                        <label class="text-xs text-gray-400">Código de venta</label>
-                        <input v-model="saleForm.sale_code" type="text" class="w-full rounded-xl border border-gray-700 bg-gray-950/70 px-3 py-3 text-sm" />
-                    </div>
-                    <div class="space-y-1 md:col-span-2">
-                        <label class="text-xs text-gray-400">Cliente</label>
-                        <input v-model="saleForm.customer_name" type="text" class="w-full rounded-xl border border-gray-700 bg-gray-950/70 px-3 py-3 text-sm" />
-                    </div>
+                <div class="flex gap-2 overflow-x-auto pb-1">
+                    <button
+                        v-for="tag in tags"
+                        :key="tag"
+                        type="button"
+                        class="whitespace-nowrap rounded-full border px-4 py-2 text-sm"
+                        :class="selectedTag === tag ? 'border-sky-500 bg-sky-500 text-white' : 'border-slate-700 bg-slate-900/70 text-slate-300'"
+                        @click="selectedTag = tag"
+                    >
+                        {{ tag }}
+                    </button>
                 </div>
-            </header>
+            </section>
 
-            <section class="rounded-2xl border border-gray-800 bg-gray-900/70 p-4 space-y-3">
-                <label class="text-xs text-gray-400">Buscar producto</label>
-                <input
-                    v-model="search"
-                    type="text"
-                    placeholder="Nombre, SKU o descripción"
-                    class="w-full rounded-xl border border-gray-700 bg-gray-950/70 px-3 py-3 text-sm"
-                />
-
-                <div class="grid gap-3 lg:grid-cols-2">
+            <section>
+                <div class="grid grid-cols-2 gap-3">
                     <article
                         v-for="product in products"
                         :key="product.id"
-                        class="rounded-xl border border-gray-800 bg-gray-950/60 p-3"
+                        class="group overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-sm"
                     >
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <p class="font-semibold">{{ product.name }}</p>
-                                <p class="text-xs text-gray-400">SKU: {{ product.sku || '—' }}</p>
-                                <p class="text-xs text-gray-400">Stock: {{ product.stock }}</p>
+                        <div class="relative h-36 bg-slate-800">
+                            <img v-if="product.photo_url" :src="product.photo_url" :alt="product.name" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                            <div v-else class="flex h-full w-full items-center justify-center text-slate-500">
+                                <i class="fa-solid fa-box text-2xl"></i>
                             </div>
-                            <p class="text-sm font-semibold">Q{{ money(product.price) }}</p>
+
+                            <div class="absolute right-2 top-2 rounded-lg bg-black/55 px-2 py-1 text-[10px] text-white">
+                                <i class="fa-solid fa-boxes-stacked mr-1"></i>{{ product.stock }}
+                            </div>
+
+                            <div v-if="Number(product.stock) <= 5" class="absolute left-2 top-2 rounded-lg bg-amber-400 px-2 py-1 text-[10px] font-semibold text-black">
+                                <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ product.stock }} left
+                            </div>
+
+                            <div v-if="qtyByProduct[product.id]" class="absolute left-2 top-2 rounded-full bg-sky-500 px-2 py-1 text-[11px] font-bold text-white" :class="Number(product.stock) <= 5 ? 'top-10' : ''">
+                                {{ qtyByProduct[product.id] }}
+                            </div>
                         </div>
-                        <div class="mt-3 flex gap-2">
-                            <button type="button" class="rounded-lg border border-gray-700 px-3 py-2 text-xs" @click="addProduct(product)">
-                                Agregar
-                            </button>
+
+                        <div class="space-y-2 p-3">
+                            <span class="inline-flex rounded-lg bg-sky-900/50 px-2 py-1 text-xs font-semibold text-sky-300">
+                                {{ product.sku || 'SIN-SKU' }}
+                            </span>
+                            <h3 class="line-clamp-2 min-h-12 text-base font-semibold leading-tight">{{ product.name }}</h3>
+                            <div class="flex items-end justify-between">
+                                <p class="text-3xl font-bold tracking-tight">Q{{ money(product.price) }}</p>
+                                <button
+                                    type="button"
+                                    class="flex h-11 w-11 items-center justify-center rounded-full"
+                                    :class="qtyByProduct[product.id] ? 'bg-sky-500 text-white' : 'bg-sky-500/20 text-sky-300'"
+                                    @click="addProduct(product)"
+                                >
+                                    <i :class="qtyByProduct[product.id] ? 'fa-solid fa-check' : 'fa-solid fa-plus'"></i>
+                                </button>
+                            </div>
                         </div>
                     </article>
                 </div>
             </section>
+        </div>
 
-            <section class="rounded-2xl border border-gray-800 bg-gray-900/70 p-4 space-y-3">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-semibold">Carrito</h2>
-                    <button type="button" class="text-xs text-gray-400 underline" @click="clearCart">Vaciar</button>
-                </div>
-
-                <div v-if="cart.length" class="space-y-3">
-                    <article v-for="(item, index) in cart" :key="item.row_key" class="rounded-xl border border-gray-800 bg-gray-950/60 p-3 space-y-2">
-                        <div class="flex items-start justify-between">
+        <div class="fixed bottom-16 left-0 right-0 z-30">
+            <div class="mx-auto max-w-6xl px-4">
+                <section class="rounded-t-3xl border border-slate-800 bg-slate-900/95 shadow-2xl backdrop-blur">
+                    <button type="button" class="flex w-full flex-col gap-2 px-4 pb-3 pt-2 text-left" @click="drawerOpen = !drawerOpen">
+                        <div class="mx-auto h-1.5 w-14 rounded-full bg-slate-600"></div>
+                        <div class="flex items-end justify-between">
                             <div>
-                                <p class="font-semibold">{{ item.name }}</p>
-                                <p class="text-xs text-gray-400">{{ item.presentation_name }} · factor {{ item.presentation_factor }}</p>
+                                <p class="text-xs uppercase tracking-wide text-slate-400">Total ({{ itemsCount }} items)</p>
+                                <p class="text-5xl font-bold leading-none">Q{{ money(total) }}</p>
                             </div>
-                            <button type="button" class="text-xs text-red-300" @click="removeItem(index)">Eliminar</button>
+                            <p class="text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
+                        </div>
+                    </button>
+
+                    <div v-if="drawerOpen" class="space-y-3 border-t border-slate-800 px-4 pb-4 pt-3 max-h-[40vh] overflow-y-auto">
+                        <div class="grid gap-3 md:grid-cols-2">
+                            <div>
+                                <label class="text-xs text-slate-400">Código de venta</label>
+                                <input v-model="saleForm.sale_code" type="text" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm" />
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-400">Cliente</label>
+                                <input v-model="saleForm.customer_name" type="text" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm" />
+                            </div>
                         </div>
 
-                        <div class="grid gap-2 md:grid-cols-3">
-                            <div>
-                                <label class="text-xs text-gray-500">Cantidad</label>
-                                <input v-model.number="item.quantity" type="number" min="1" class="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm" />
+                        <article v-for="(item, index) in cart" :key="item.row_key" class="rounded-xl border border-slate-700 bg-slate-950/60 p-3">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="font-semibold">{{ item.name }}</p>
+                                    <p class="text-xs text-slate-400">{{ item.presentation_name }}</p>
+                                </div>
+                                <button type="button" class="text-xs text-rose-300" @click="removeItem(index)">Quitar</button>
                             </div>
-                            <div>
-                                <label class="text-xs text-gray-500">Precio</label>
-                                <input v-model.number="item.price" :disabled="!canChangePrice" type="number" min="0" step="0.01" class="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm disabled:opacity-60" />
+                            <div class="mt-2 grid grid-cols-3 gap-2">
+                                <input v-model.number="item.quantity" type="number" min="1" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm" />
+                                <input v-model.number="item.price" :disabled="!canChangePrice" type="number" min="0" step="0.01" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm disabled:opacity-60" />
+                                <div class="flex items-center justify-end text-sm font-semibold">Q{{ money(item.quantity * item.price) }}</div>
                             </div>
-                            <div class="text-right">
-                                <p class="text-xs text-gray-500">Subtotal</p>
-                                <p class="text-base font-semibold">Q{{ money(item.quantity * item.price) }}</p>
-                            </div>
-                        </div>
-                    </article>
+                        </article>
 
-                    <div class="rounded-xl border border-gray-700 bg-gray-950/60 p-3 space-y-2">
-                        <div class="flex items-center justify-between text-sm">
-                            <span class="text-gray-400">Total</span>
-                            <strong>Q{{ money(total) }}</strong>
-                        </div>
-
-                        <div class="space-y-2">
-                            <p class="text-xs text-gray-400">Pagos</p>
-                            <div v-for="(payment, idx) in saleForm.payments" :key="idx" class="grid gap-2 grid-cols-5">
-                                <select v-model="payment.method" class="col-span-2 rounded-lg border border-gray-700 bg-gray-900 px-2 py-2 text-sm">
+                        <div class="space-y-2 rounded-xl border border-slate-700 bg-slate-950/60 p-3">
+                            <p class="text-xs text-slate-400">Pagos</p>
+                            <div v-for="(payment, idx) in saleForm.payments" :key="idx" class="grid grid-cols-5 gap-2">
+                                <select v-model="payment.method" class="col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm">
                                     <option value="cash">Efectivo</option>
                                     <option value="card">Tarjeta</option>
                                     <option value="transfer">Transferencia</option>
                                 </select>
-                                <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-gray-700 bg-gray-900 px-2 py-2 text-sm" />
-                                <button type="button" class="rounded-lg border border-gray-700 text-xs" @click="removePayment(idx)">X</button>
+                                <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm" />
+                                <button type="button" class="rounded-lg border border-slate-700 text-xs" @click="removePayment(idx)">X</button>
                             </div>
-                            <button type="button" class="rounded-lg border border-gray-700 px-3 py-2 text-xs" @click="addPayment">Agregar método</button>
-                            <p class="text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-red-300'">
-                                Pagado: Q{{ money(paymentsTotal) }}
-                            </p>
+                            <button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-xs" @click="addPayment">Agregar método</button>
                         </div>
                     </div>
-                </div>
 
-                <div v-else class="text-sm text-gray-400">Aún no has agregado productos.</div>
-
-                <div v-if="saleForm.errors.sale" class="text-sm text-red-400">{{ saleForm.errors.sale }}</div>
-
-                <button
-                    type="button"
-                    class="w-full rounded-xl bg-amber-400 px-4 py-3 text-base font-semibold text-black disabled:opacity-50"
-                    :disabled="!canSubmit"
-                    @click="submitSale"
-                >
-                    Registrar venta
-                </button>
-            </section>
+                    <div class="px-4 pb-4">
+                        <div v-if="saleForm.errors.sale" class="mb-2 text-sm text-rose-300">{{ saleForm.errors.sale }}</div>
+                        <button
+                            type="button"
+                            class="w-full rounded-2xl bg-sky-500 px-4 py-4 text-xl font-semibold text-white shadow-lg shadow-sky-700/30 disabled:opacity-50"
+                            :disabled="!canSubmit"
+                            @click="submitSale"
+                        >
+                            Pagar Ahora <i class="fa-solid fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </section>
+            </div>
         </div>
 
         <BottomNav />
@@ -170,6 +210,9 @@ const page = usePage();
 const search = ref(props.filters.q || '');
 const products = ref(props.products);
 const cart = ref([]);
+const drawerOpen = ref(false);
+const tags = ['Todos', 'Bebidas', 'Snacks', 'Electronica'];
+const selectedTag = ref('Todos');
 
 const saleForm = useForm({
     sale_code: props.defaults.sale_code || '',
@@ -178,6 +221,7 @@ const saleForm = useForm({
     payments: [{ method: 'cash', amount: 0 }],
 });
 
+const displaySaleCode = computed(() => saleForm.sale_code || '---');
 const openCashSession = computed(() => props.open_cash_session);
 const canChangePrice = computed(() => {
     const permissions = page.props.auth?.user?.permissions || [];
@@ -209,6 +253,7 @@ const addProduct = (product) => {
     const existing = cart.value.find((item) => item.product_id === product.id && item.presentation_name === (product.unit_label || 'Unidad'));
     if (existing) {
         existing.quantity += 1;
+        drawerOpen.value = true;
         return;
     }
 
@@ -223,19 +268,25 @@ const addProduct = (product) => {
         price: Number(product.price || 0),
         note: '',
     });
+    drawerOpen.value = true;
 };
 
 const removeItem = (index) => {
     cart.value.splice(index, 1);
 };
 
-const clearCart = () => {
-    cart.value = [];
-};
-
 const total = computed(() => cart.value.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.price || 0), 0));
+const itemsCount = computed(() => cart.value.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
 const paymentsTotal = computed(() => saleForm.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0));
 const paymentsMatch = computed(() => Math.abs(paymentsTotal.value - total.value) < 0.01);
+
+const qtyByProduct = computed(() => {
+    const qty = {};
+    cart.value.forEach((item) => {
+        qty[item.product_id] = (qty[item.product_id] || 0) + Number(item.quantity || 0);
+    });
+    return qty;
+});
 
 watch(total, (value) => {
     if (saleForm.payments.length === 1 && saleForm.payments[0].method === 'cash') {
@@ -272,12 +323,13 @@ const submitSale = () => {
             saleForm.payments = [{ method: 'cash', amount: 0 }];
             saleForm.sale_code = '';
             saleForm.customer_name = 'CF';
+            drawerOpen.value = false;
         },
     });
 };
 
 const contentSafeArea = computed(() => ({
-    paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))',
+    paddingBottom: 'calc(13rem + env(safe-area-inset-bottom, 0px))',
 }));
 
 const logoutForm = useForm({});
