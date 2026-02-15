@@ -53,11 +53,70 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->roleKey() === 'owner_manager';
     }
 
     public function isSeller(): bool
     {
-        return $this->role === 'seller';
+        return $this->roleKey() === 'seller_cashier';
+    }
+
+    public function roleKey(): string
+    {
+        $role = (string) $this->role;
+        $aliases = config('access.role_aliases', []);
+        $roles = config('access.roles', []);
+
+        $resolved = $aliases[$role] ?? $role;
+
+        if (array_key_exists($resolved, $roles)) {
+            return $resolved;
+        }
+
+        return 'seller_cashier';
+    }
+
+    public function roleLabel(): string
+    {
+        $label = config('access.roles.' . $this->roleKey() . '.label');
+
+        return is_string($label) ? $label : 'Usuario';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function permissions(): array
+    {
+        $permissions = config('access.role_permissions.' . $this->roleKey(), []);
+
+        return array_values(array_unique(array_map('strval', $permissions)));
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        $permissions = $this->permissions();
+
+        return in_array('*', $permissions, true) || in_array($permission, $permissions, true);
+    }
+
+    public function canSwitchBranch(): bool
+    {
+        return (bool) config('access.roles.' . $this->roleKey() . '.can_switch_branch', false);
+    }
+
+    public function defaultHomeRoute(): string
+    {
+        $route = config('access.roles.' . $this->roleKey() . '.default_home', '/admin');
+
+        return is_string($route) ? $route : '/admin';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function availableRoles(): array
+    {
+        return array_keys(config('access.roles', []));
     }
 }

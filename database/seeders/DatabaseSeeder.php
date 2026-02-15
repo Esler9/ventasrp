@@ -26,7 +26,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Admin',
                 'username' => 'admin',
-                'role' => 'admin',
+                'role' => 'owner_manager',
                 'password' => Hash::make('1234'),
                 'pin' => Hash::make('1234'),
             ],
@@ -37,7 +37,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Vendedor',
                 'username' => 'vendedor',
-                'role' => 'seller',
+                'role' => 'seller_cashier',
                 'password' => Hash::make('1234'),
                 'pin' => Hash::make('1234'),
             ],

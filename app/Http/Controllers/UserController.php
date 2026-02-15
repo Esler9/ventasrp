@@ -17,10 +17,23 @@ class UserController extends Controller
             ->select(['id', 'name', 'username', 'email', 'role'])
             ->selectRaw('pin IS NOT NULL as has_pin')
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'role' => $user->roleKey(),
+                'role_label' => $user->roleLabel(),
+                'has_pin' => (bool) $user->has_pin,
+            ]);
 
         return Inertia::render('Admin/Users', [
             'users' => $users,
+            'roles' => collect(User::availableRoles())->map(fn (string $role) => [
+                'key' => $role,
+                'label' => (string) config("access.roles.{$role}.label", $role),
+            ])->values(),
         ]);
     }
 
@@ -30,7 +43,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', 'unique:users,username'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'role' => ['required', Rule::in(['admin', 'seller'])],
+            'role' => ['required', Rule::in(User::availableRoles())],
             'password' => ['required', 'string', 'min:4'],
             'pin' => ['nullable', 'string', 'min:4', 'max:10'],
         ]);
@@ -46,7 +59,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')->ignore($user->id)],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'role' => ['required', Rule::in(['admin', 'seller'])],
+            'role' => ['required', Rule::in(User::availableRoles())],
             'password' => ['nullable', 'string', 'min:4'],
             'pin' => ['nullable', 'string', 'min:4', 'max:10'],
         ]);

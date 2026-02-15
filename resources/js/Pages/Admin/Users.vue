@@ -49,8 +49,9 @@
                             v-model="form.role"
                             class="w-full rounded-xl border border-gray-800 bg-gray-950/80 px-3 py-3 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
                         >
-                            <option value="seller">Vendedor</option>
-                            <option value="admin">Admin</option>
+                            <option v-for="role in roles" :key="role.key" :value="role.key">
+                                {{ role.label }}
+                            </option>
                         </select>
                     </div>
                     <div class="space-y-1 sm:col-span-1">
@@ -113,7 +114,7 @@
                             <p class="text-lg font-semibold text-gray-50">{{ user.name }}</p>
                         </div>
                         <span class="rounded-full border border-gray-700 bg-gray-800 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-200">
-                            {{ roleLabel(user.role) }}
+                            {{ user.role_label }}
                         </span>
                     </div>
                     <div class="mt-3 space-y-1 text-sm text-gray-300">
@@ -144,25 +145,25 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    roles: {
+        type: Array,
+        default: () => [],
+    },
 });
-
-const roleLabel = (role) => {
-    if (role === 'admin') return 'Admin';
-    if (role === 'seller') return 'Vendedor';
-    return role || 'Usuario';
-};
 
 const users = props.users.map((user) => ({
     ...user,
     has_pin: Boolean(user.has_pin),
 }));
 
+const defaultRole = computed(() => props.roles[0]?.key || 'seller_cashier');
+
 const form = useForm({
     id: null,
     name: '',
     username: '',
     email: '',
-    role: 'seller',
+    role: defaultRole.value,
     password: '',
     pin: '',
 });
@@ -187,7 +188,7 @@ const startCreate = () => {
     form.name = '';
     form.username = '';
     form.email = '';
-    form.role = 'seller';
+    form.role = defaultRole.value;
     form.password = '';
     form.pin = '';
     form.clearErrors();
@@ -199,7 +200,7 @@ const submit = () => {
         username: form.username,
         email: form.email,
         role: form.role,
-        password: isEditing.value ? (form.password || null) : form.password,
+        password: isEditing.value ? form.password || null : form.password,
         pin: form.pin === '' ? null : form.pin,
     };
 

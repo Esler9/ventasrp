@@ -59,12 +59,7 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        $user = $request->user();
-        if (method_exists($user, 'isSeller') && $user->isSeller()) {
-            return redirect()->intended('/pos');
-        }
-
-        return redirect()->intended('/admin');
+        return redirect()->intended($request->user()->defaultHomeRoute());
     }
 
     public function logout(Request $request): RedirectResponse

@@ -62,9 +62,14 @@ class SaleController extends Controller
             ->first();
 
         $sellers = User::query()
-            ->whereIn('role', ['admin', 'seller'])
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get()
+            ->filter(fn (User $user) => $user->hasPermission('sales.view'))
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+            ])
+            ->values();
 
         return Inertia::render('Sales/Index', [
             'items' => $items,
