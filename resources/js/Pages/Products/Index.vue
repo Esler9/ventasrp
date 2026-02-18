@@ -42,12 +42,19 @@
                     >
                         <div class="flex items-center gap-3 md:col-span-4">
                             <div class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-gray-850 ring-1 ring-black/20">
-                                <img
+                                <button
                                     v-if="product.photo_url"
-                                    :src="product.photo_url"
-                                    alt="Foto"
-                                    class="h-full w-full object-contain"
-                                />
+                                    type="button"
+                                    class="h-full w-full cursor-zoom-in"
+                                    :aria-label="`Ver foto de ${product.name}`"
+                                    @click="openPhoto(product)"
+                                >
+                                    <img
+                                        :src="product.photo_url"
+                                        :alt="`Foto de ${product.name}`"
+                                        class="h-full w-full object-contain"
+                                    />
+                                </button>
                                 <div v-else class="flex h-full w-full items-center justify-center text-gray-600 text-xs">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="m3 7 6 6m0 0 4-4 8 8M13 13h6v6M3 5h6v6" />
@@ -56,6 +63,7 @@
                             </div>
                             <div>
                                 <p class="font-semibold text-gray-50">{{ product.name }}</p>
+                                <p class="text-xs text-gray-400">Categoría: {{ product.category_name || 'Sin categoría' }}</p>
                                 <p class="text-xs text-gray-500">SKU: {{ product.sku }}</p>
                                 <p class="text-xs text-gray-500">Vence: {{ product.expires_at || '—' }}</p>
                                 <p class="text-xs text-gray-500">Activo: {{ product.is_active ? 'Sí' : 'No' }}</p>
@@ -106,11 +114,33 @@
                 </div>
             </div>
         </div>
+
+        <div
+            v-if="previewPhotoUrl"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+            role="dialog"
+            aria-modal="true"
+            @click.self="closePhoto"
+        >
+            <button
+                type="button"
+                class="absolute right-4 top-4 rounded-full bg-black/60 px-3 py-2 text-sm font-semibold text-white hover:bg-black/75"
+                aria-label="Cerrar vista ampliada"
+                @click="closePhoto"
+            >
+                Cerrar
+            </button>
+            <img
+                :src="previewPhotoUrl"
+                :alt="previewPhotoName ? `Foto de ${previewPhotoName}` : 'Foto de producto ampliada'"
+                class="max-h-[85vh] max-w-[95vw] rounded-xl object-contain"
+            />
+        </div>
     </AppLayout>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -126,6 +156,8 @@ const props = defineProps({
 });
 
 const search = ref(props.filters.q || '');
+const previewPhotoUrl = ref(null);
+const previewPhotoName = ref('');
 
 const debounce = (fn, delay = 300) => {
     let timer;
@@ -152,6 +184,30 @@ const goTo = (link) => {
         router.visit(link);
     }
 };
+
+const openPhoto = (product) => {
+    previewPhotoUrl.value = product.photo_url || null;
+    previewPhotoName.value = product.name || '';
+};
+
+const closePhoto = () => {
+    previewPhotoUrl.value = null;
+    previewPhotoName.value = '';
+};
+
+const onKeydown = (event) => {
+    if (event.key === 'Escape' && previewPhotoUrl.value) {
+        closePhoto();
+    }
+};
+
+onMounted(() => {
+    window.addEventListener('keydown', onKeydown);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('keydown', onKeydown);
+});
 </script>
 
 <style scoped>

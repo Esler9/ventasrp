@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\ProductPresentation;
 
 class Product extends Model
 {
     protected $fillable = [
+        'category_id',
         'name',
         'unit_label',
         'description',
@@ -29,6 +31,11 @@ class Product extends Model
     public function presentations(): HasMany
     {
         return $this->hasMany(ProductPresentation::class);
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     public function saleItems(): HasMany

@@ -35,7 +35,7 @@
 
 ### Fase B: Design tokens + theming profesional
 - [ ] Tokenizar colores/espaciado/radios/sombras (light/dark desde base).
-- [ ] Configuración admin de color primario/secundario persistente.
+- [x] Configuración admin de color primario/secundario persistente.
 - [ ] Sistema de componentes base (button/input/card/tab/modal/toast/skeleton).
 
 ### Fase C: POS ultra rápido

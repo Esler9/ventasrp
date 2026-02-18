@@ -22,3 +22,11 @@
 - Se agregó restricción: no se puede vender sin caja abierta.
 - Se actualizó navegación para acceso directo a `Caja` desde menú móvil.
 - Se añadieron tests de flujo: apertura de caja + venta multi-item + control de stock.
+
+## 2026-02-15 - Módulo de configuraciones (branding)
+- Se creó pantalla de Configuraciones para administrar logo, color primario y color secundario.
+- Se agregaron permisos `settings.view` y `settings.update` con autorización backend por ruta.
+- Se añadieron rutas y controlador para lectura/actualización de branding.
+- Se extendió `app_settings` con `app_logo_path`, `primary_color` y `secondary_color`.
+- Se comparte branding global por Inertia y se aplica a variables CSS del frontend.
+- Se actualizó el layout para mostrar logo configurado.

@@ -11,6 +11,7 @@ class Sale extends Model
     protected $fillable = [
         'sale_code',
         'user_id',
+        'customer_id',
         'customer_name',
         'cash_session_id',
         'items_count',
@@ -30,6 +31,11 @@ class Sale extends Model
     public function seller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'customer_id');
     }
 
     public function cashSession(): BelongsTo

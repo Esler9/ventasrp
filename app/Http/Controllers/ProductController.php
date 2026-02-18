@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductPresentation;
 use Illuminate\Http\RedirectResponse;
@@ -18,13 +19,15 @@ class ProductController extends Controller
         $q = trim((string) $request->query('q', ''));
 
         $products = Product::query()
-            ->select(['id', 'name', 'unit_label', 'description', 'sku', 'price', 'stock', 'expires_at', 'is_active', 'photo'])
+            ->select(['id', 'category_id', 'name', 'unit_label', 'description', 'sku', 'price', 'stock', 'expires_at', 'is_active', 'photo'])
             ->where('is_active', true)
+            ->with('category:id,name')
             ->when($q !== '', function ($builder) use ($q) {
                 $builder->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
                         ->orWhere('sku', 'like', "%{$q}%")
-                        ->orWhere('description', 'like', "%{$q}%");
+                        ->orWhere('description', 'like', "%{$q}%")
+                        ->orWhereHas('category', fn ($category) => $category->where('name', 'like', "%{$q}%"));
                 });
                 $builder->orderByRaw(
                     "CASE WHEN name LIKE ? THEN 0 WHEN sku LIKE ? THEN 1 WHEN description LIKE ? THEN 2 ELSE 3 END",
@@ -36,6 +39,8 @@ class ProductController extends Controller
             ->through(fn ($product) => [
                 'id' => $product->id,
                 'name' => $product->name,
+                'category_id' => $product->category_id,
+                'category_name' => $product->category?->name,
                 'unit_label' => $product->unit_label,
                 'description' => $product->description,
                 'sku' => $product->sku,
@@ -59,12 +64,14 @@ class ProductController extends Controller
     {
         return Inertia::render('Products/Form', [
             'product' => null,
+            'categories' => $this->categoryOptions(),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:255'],
             'unit_label' => ['required', 'string', 'max:50'],
             'description' => ['nullable', 'string', 'max:2000'],
@@ -107,6 +114,7 @@ class ProductController extends Controller
         return Inertia::render('Products/Form', [
             'product' => [
                 'id' => $product->id,
+                'category_id' => $product->category_id,
                 'name' => $product->name,
                 'unit_label' => $product->unit_label,
                 'description' => $product->description,
@@ -125,12 +133,14 @@ class ProductController extends Controller
                     'is_active',
                 ]),
             ],
+            'categories' => $this->categoryOptions(),
         ]);
     }
 
     public function update(Request $request, Product $product): RedirectResponse
     {
         $data = $request->validate([
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:255'],
             'unit_label' => ['required', 'string', 'max:50'],
             'description' => ['nullable', 'string', 'max:2000'],
@@ -251,5 +261,22 @@ class ProductController extends Controller
         }
 
         $data['sku'] = $candidate;
+    }
+
+    /**
+     * @return array<int, array{id:int,name:string}>
+     */
+    private function categoryOptions(): array
+    {
+        return Category::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Category $category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ])
+            ->values()
+            ->all();
     }
 }

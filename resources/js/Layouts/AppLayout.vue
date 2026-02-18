@@ -6,9 +6,12 @@
         </div>
         <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur fade-in-soft">
             <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-                <div class="space-y-1">
+                <div class="flex items-center gap-3">
+                    <img :src="logoUrl" alt="Logo" class="h-9 w-9 rounded-xl object-cover ring-1 ring-black/30" />
+                    <div class="space-y-1">
                     <p class="text-xs uppercase tracking-wide text-gray-500">Panel</p>
                     <h1 class="text-xl font-semibold text-gray-50">{{ title }}</h1>
+                    </div>
                 </div>
                 <div class="flex items-center gap-3">
                     <slot name="actions" />
@@ -43,7 +46,8 @@
 </template>
 
 <script setup>
-import { useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { useForm, usePage } from '@inertiajs/vue3';
 import BottomNav from '../Components/BottomNav.vue';
 import GlobalLoader from '../Components/GlobalLoader.vue';
 import FlashBanner from '../Components/FlashBanner.vue';
@@ -58,6 +62,9 @@ defineProps({
 
 const logoutForm = useForm({});
 const { theme, toggleTheme } = useTheme();
+const page = usePage();
+const appSettings = computed(() => page.props.app?.settings || {});
+const logoUrl = computed(() => appSettings.value.logo_url || '/logos/iconofm-32.png');
 
 const logout = () => {
     logoutForm.post('/logout');

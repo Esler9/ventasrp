@@ -42,10 +42,13 @@
                     <div class="mt-3 space-y-2 text-sm">
                         <div class="flex items-center justify-between"><span class="text-gray-400">Saldo inicial</span><span>Q{{ money(summary.opening) }}</span></div>
                         <div class="flex items-center justify-between"><span class="text-gray-400">Ventas (efectivo)</span><span class="text-emerald-400">+Q{{ money(summary.cash_sales) }}</span></div>
-                        <div class="flex items-center justify-between"><span class="text-gray-400">Ingresos varios</span><span class="text-emerald-400">+Q{{ money(summary.incomes) }}</span></div>
-                        <div class="flex items-center justify-between"><span class="text-gray-400">Gastos / retiros</span><span class="text-red-400">-Q{{ money(summary.expenses) }}</span></div>
+                        <div class="flex items-center justify-between"><span class="text-gray-400">Ventas (tarjeta)</span><span class="text-sky-300">Q{{ money(summary.card_sales) }}</span></div>
+                        <div class="flex items-center justify-between"><span class="text-gray-400">Ventas (transferencia)</span><span class="text-indigo-300">Q{{ money(summary.transfer_sales) }}</span></div>
+                        <div class="flex items-center justify-between border-t border-gray-800 pt-2"><span class="text-gray-300">Ventas totales</span><span class="text-gray-100">Q{{ money(summary.total_sales) }}</span></div>
+                        <div class="flex items-center justify-between"><span class="text-gray-400">Ingresos varios (efectivo)</span><span class="text-emerald-400">+Q{{ money(summary.incomes) }}</span></div>
+                        <div class="flex items-center justify-between"><span class="text-gray-400">Gastos / retiros (efectivo)</span><span class="text-red-400">-Q{{ money(summary.expenses) }}</span></div>
                         <div class="border-t border-gray-700 pt-2 flex items-center justify-between font-semibold text-lg">
-                            <span>Total esperado</span>
+                            <span>Total esperado en caja</span>
                             <span>Q{{ money(summary.expected) }}</span>
                         </div>
                     </div>
@@ -53,14 +56,19 @@
 
                 <div class="rounded-2xl border border-gray-800 bg-gray-900/70 p-4 space-y-3">
                     <h3 class="text-lg font-semibold text-gray-100">Movimiento rápido</h3>
-                    <form class="grid gap-3 md:grid-cols-4" @submit.prevent="saveMovement">
+                    <form class="grid gap-3 md:grid-cols-5" @submit.prevent="saveMovement">
                         <select v-model="movementForm.type" class="rounded-xl border border-gray-700 bg-gray-950/70 px-3 py-3 text-sm text-gray-100">
                             <option value="income">Ingreso</option>
                             <option value="expense">Gasto / Retiro</option>
                         </select>
+                        <select v-model="movementForm.method" class="rounded-xl border border-gray-700 bg-gray-950/70 px-3 py-3 text-sm text-gray-100">
+                            <option value="cash">Efectivo</option>
+                            <option value="card">Tarjeta</option>
+                            <option value="transfer">Transferencia</option>
+                        </select>
                         <input v-model.number="movementForm.amount" type="number" min="0.01" step="0.01" placeholder="Monto" class="rounded-xl border border-gray-700 bg-gray-950/70 px-3 py-3 text-sm text-gray-100" />
                         <input v-model="movementForm.note" type="text" placeholder="Motivo" class="rounded-xl border border-gray-700 bg-gray-950/70 px-3 py-3 text-sm text-gray-100 md:col-span-2" />
-                        <button type="submit" class="rounded-xl border border-gray-600 px-4 py-3 text-sm font-semibold text-gray-100 md:col-span-4">Guardar movimiento</button>
+                        <button type="submit" class="rounded-xl border border-gray-600 px-4 py-3 text-sm font-semibold text-gray-100 md:col-span-5">Guardar movimiento</button>
                     </form>
                 </div>
 
@@ -68,7 +76,7 @@
                     <h3 class="text-lg font-semibold text-gray-100">Cierre y arqueo</h3>
                     <form class="grid gap-3 md:grid-cols-3" @submit.prevent="closeCash">
                         <div class="space-y-1">
-                            <label class="text-xs text-gray-400">Monto real en caja</label>
+                            <label class="text-xs text-gray-400">Monto real en caja (efectivo)</label>
                             <input v-model.number="closeForm.counted_amount" type="number" min="0" step="0.01" class="w-full rounded-xl border border-gray-700 bg-gray-950/70 px-3 py-3 text-sm text-gray-100" />
                         </div>
                         <div class="space-y-1 md:col-span-2">
@@ -107,6 +115,7 @@ const openForm = useForm({
 
 const movementForm = useForm({
     type: 'income',
+    method: 'cash',
     amount: '',
     note: '',
 });

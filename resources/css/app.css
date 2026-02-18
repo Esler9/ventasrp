@@ -11,6 +11,8 @@
 }
 
 :root {
+    --brand-primary: #0773a4;
+    --brand-secondary: #0ea5e9;
     --bg-950: #0f172a;
     --bg-900: #111827;
     --bg-850: #1f2937;
@@ -120,6 +122,26 @@ body {
 
 .border-gray-800 {
     border-color: var(--border-800) !important;
+}
+
+.bg-brand-primary {
+    background-color: var(--brand-primary) !important;
+}
+
+.bg-brand-secondary {
+    background-color: var(--brand-secondary) !important;
+}
+
+.text-brand-primary {
+    color: var(--brand-primary) !important;
+}
+
+.text-brand-secondary {
+    color: var(--brand-secondary) !important;
+}
+
+.border-brand-primary {
+    border-color: var(--brand-primary) !important;
 }
 
 @layer utilities {

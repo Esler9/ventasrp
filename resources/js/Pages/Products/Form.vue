@@ -4,6 +4,52 @@
             <form @submit.prevent="submit" class="space-y-5 rounded-2xl bg-gray-900/80 p-5 ring-1 ring-black/30">
                 <div class="grid gap-4 md:grid-cols-2">
                     <div class="space-y-1">
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm text-gray-300">Categoría</label>
+                            <button
+                                v-if="canCreateCategory"
+                                type="button"
+                                class="rounded-md border border-gray-700 px-2 py-1 text-[11px] font-semibold text-gray-200 hover:bg-gray-800"
+                                @click="toggleQuickCategory"
+                            >
+                                {{ quickCategoryOpen ? 'Cancelar' : '+ Nueva rápida' }}
+                            </button>
+                        </div>
+                        <select
+                            v-model="form.category_id"
+                            required
+                            class="w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
+                        >
+                            <option :value="null" disabled>Selecciona categoría</option>
+                            <option v-for="category in categoryOptions" :key="category.id" :value="category.id">
+                                {{ category.name }}
+                            </option>
+                        </select>
+                        <div v-if="quickCategoryOpen && canCreateCategory" class="space-y-2 rounded-lg border border-gray-800 bg-gray-950/70 p-3">
+                            <input
+                                v-model="quickCategory.name"
+                                type="text"
+                                placeholder="Nombre de categoría"
+                                class="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
+                            />
+                            <input
+                                v-model="quickCategory.description"
+                                type="text"
+                                placeholder="Descripción (opcional)"
+                                class="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
+                            />
+                            <p v-if="quickCategoryError" class="text-xs text-red-300">{{ quickCategoryError }}</p>
+                            <button
+                                type="button"
+                                class="w-full rounded-lg bg-amber-400 px-3 py-2 text-xs font-semibold text-black hover:bg-amber-300 disabled:opacity-60"
+                                :disabled="quickCategorySaving"
+                                @click="createQuickCategory"
+                            >
+                                {{ quickCategorySaving ? 'Guardando...' : 'Guardar categoría rápida' }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
                         <label class="text-sm text-gray-300">Nombre</label>
                         <input
                             v-model="form.name"
@@ -180,8 +226,9 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
-import { Link, useForm } from '@inertiajs/vue3';
+import axios from 'axios';
+import { computed, ref, watch } from 'vue';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -189,9 +236,36 @@ const props = defineProps({
         type: Object,
         default: null,
     },
+    categories: {
+        type: Array,
+        default: () => [],
+    },
+});
+
+const page = usePage();
+const categoryOptions = ref([...(props.categories ?? [])]);
+const quickCategoryOpen = ref(false);
+const quickCategorySaving = ref(false);
+const quickCategoryError = ref('');
+const quickCategory = ref({
+    name: '',
+    description: '',
+});
+
+watch(
+    () => props.categories,
+    (value) => {
+        categoryOptions.value = [...(value ?? [])];
+    },
+);
+
+const canCreateCategory = computed(() => {
+    const permissions = page.props.auth?.user?.permissions || [];
+    return permissions.includes('*') || permissions.includes('categories.create');
 });
 
 const form = useForm({
+    category_id: props.product?.category_id ?? props.categories[0]?.id ?? null,
     name: props.product?.name ?? '',
     unit_label: props.product?.unit_label ?? 'Unidad',
     description: props.product?.description ?? '',
@@ -213,6 +287,61 @@ const form = useForm({
 const preview = ref(props.product?.photo_url ?? null);
 
 const title = computed(() => (props.product ? 'Editar producto' : 'Crear producto'));
+
+const toggleQuickCategory = () => {
+    quickCategoryOpen.value = !quickCategoryOpen.value;
+    quickCategoryError.value = '';
+    if (!quickCategoryOpen.value) {
+        quickCategory.value = { name: '', description: '' };
+    }
+};
+
+const createQuickCategory = async () => {
+    const name = quickCategory.value.name.trim();
+    if (!name) {
+        quickCategoryError.value = 'Ingresa el nombre de la categoría.';
+        return;
+    }
+
+    quickCategorySaving.value = true;
+    quickCategoryError.value = '';
+
+    try {
+        const response = await axios.post(
+            '/admin/categories',
+            {
+                name,
+                description: quickCategory.value.description?.trim() || null,
+                is_active: true,
+            },
+            {
+                headers: {
+                    Accept: 'application/json',
+                },
+            },
+        );
+
+        const created = {
+            id: Number(response.data.id),
+            name: response.data.name,
+        };
+
+        const merged = [...categoryOptions.value, created];
+        categoryOptions.value = merged
+            .filter((category, index, array) => array.findIndex((item) => Number(item.id) === Number(category.id)) === index)
+            .sort((a, b) => String(a.name).localeCompare(String(b.name), 'es'));
+
+        form.category_id = created.id;
+        quickCategory.value = { name: '', description: '' };
+        quickCategoryOpen.value = false;
+    } catch (error) {
+        quickCategoryError.value = error?.response?.data?.errors?.name?.[0]
+            || error?.response?.data?.message
+            || 'No se pudo crear la categoría.';
+    } finally {
+        quickCategorySaving.value = false;
+    }
+};
 
 const onFileChange = (event) => {
     const file = event.target.files?.[0];

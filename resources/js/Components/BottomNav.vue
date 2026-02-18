@@ -114,10 +114,18 @@ const moreItems = computed(() => [
     {
         key: 'clients',
         label: 'Clientes',
-        href: null,
-        enabled: can('clients.view') && false,
-        disabledReason: can('clients.view') ? 'Disponible en la siguiente fase.' : 'Sin permiso para Clientes.',
-        disabledTag: can('clients.view') ? 'Próximamente' : 'Sin permiso',
+        href: '/admin/clients',
+        enabled: can('clients.view'),
+        disabledReason: 'Sin permiso para Clientes.',
+        disabledTag: 'Sin permiso',
+    },
+    {
+        key: 'categories',
+        label: 'Categorías',
+        href: '/admin/categories',
+        enabled: can('categories.view'),
+        disabledReason: 'Sin permiso para Categorías.',
+        disabledTag: 'Sin permiso',
     },
     {
         key: 'cash',
@@ -130,10 +138,10 @@ const moreItems = computed(() => [
     {
         key: 'reports',
         label: 'Reportes',
-        href: null,
-        enabled: can('reports.view') && false,
-        disabledReason: can('reports.view') ? 'Disponible en la siguiente fase.' : 'Sin permiso para Reportes.',
-        disabledTag: can('reports.view') ? 'Próximamente' : 'Sin permiso',
+        href: '/admin/reports',
+        enabled: can('reports.view'),
+        disabledReason: 'Sin permiso para Reportes.',
+        disabledTag: 'Sin permiso',
     },
     {
         key: 'expenses',
@@ -151,6 +159,14 @@ const moreItems = computed(() => [
         disabledReason: can('banks.view') ? 'Disponible en la siguiente fase.' : 'Sin permiso para Bancos.',
         disabledTag: can('banks.view') ? 'Próximamente' : 'Sin permiso',
     },
+    {
+        key: 'settings',
+        label: 'Configuraciones',
+        href: '/admin/settings',
+        enabled: can('settings.view'),
+        disabledReason: 'Sin permiso para Configuraciones.',
+        disabledTag: 'Sin permiso',
+    },
 ]);
 
 const isActive = (key) => {
@@ -158,7 +174,8 @@ const isActive = (key) => {
     const active =
         (key === 'home' && (path === '/' || path === '/admin')) ||
         (key === 'pos' && path.startsWith('/pos')) ||
-        (key === 'products' && path.startsWith('/admin/products'));
+        (key === 'products' && path.startsWith('/admin/products')) ||
+        (key === 'clients' && path.startsWith('/admin/clients'));
 
     return {
         'text-amber-200': active,

@@ -2,7 +2,11 @@
 
 use App\Http\Controllers\Admin\CashController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ClientController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SaleController;
@@ -44,6 +48,16 @@ Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
     Route::match(['put', 'patch', 'post'], '/products/{product}', [ProductController::class, 'update'])->middleware('permission:products.edit')->name('products.update');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('permission:products.delete')->name('products.destroy');
 
+    Route::get('/categories', [CategoryController::class, 'index'])->middleware('permission:categories.view')->name('categories.index');
+    Route::post('/categories', [CategoryController::class, 'store'])->middleware('permission:categories.create')->name('categories.store');
+    Route::match(['put', 'patch', 'post'], '/categories/{category}', [CategoryController::class, 'update'])->middleware('permission:categories.edit')->name('categories.update');
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->middleware('permission:categories.delete')->name('categories.destroy');
+
+    Route::get('/clients', [ClientController::class, 'index'])->middleware('permission:clients.view')->name('clients.index');
+    Route::post('/clients', [ClientController::class, 'store'])->middleware('permission:clients.create')->name('clients.store');
+    Route::match(['put', 'patch', 'post'], '/clients/{client}', [ClientController::class, 'update'])->middleware('permission:clients.edit')->name('clients.update');
+    Route::delete('/clients/{client}', [ClientController::class, 'destroy'])->middleware('permission:clients.delete')->name('clients.destroy');
+
     Route::get('/sales', [SaleController::class, 'index'])->middleware('permission:sales.view')->name('sales.index');
 
     Route::post('/point-of-sale/sales', [PosController::class, 'store'])->middleware('permission:pos.create_sale')->name('admin.pos.sales');
@@ -52,8 +66,12 @@ Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
     Route::post('/cash/open', [CashController::class, 'open'])->middleware('permission:cash.open')->name('admin.cash.open');
     Route::post('/cash/movements', [CashController::class, 'storeMovement'])->middleware('permission:cash.movements')->name('admin.cash.movements.store');
     Route::post('/cash/close', [CashController::class, 'close'])->middleware('permission:cash.close')->name('admin.cash.close');
+    Route::get('/reports', [ReportController::class, 'index'])->middleware('permission:reports.view')->name('admin.reports.index');
 
     Route::get('/users', [UserController::class, 'index'])->middleware('permission:users.view')->name('admin.users.index');
     Route::post('/users', [UserController::class, 'store'])->middleware('permission:users.manage')->name('admin.users.store');
     Route::match(['put', 'patch', 'post'], '/users/{user}', [UserController::class, 'update'])->middleware('permission:users.manage')->name('admin.users.update');
+
+    Route::get('/settings', [SettingsController::class, 'index'])->middleware('permission:settings.view')->name('admin.settings.index');
+    Route::post('/settings', [SettingsController::class, 'update'])->middleware('permission:settings.update')->name('admin.settings.update');
 });

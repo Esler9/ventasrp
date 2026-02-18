@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\CashMovement;
 use App\Models\CashSession;
+use App\Models\Client;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Sale;
@@ -21,15 +23,48 @@ class PosController extends Controller
     public function index(Request $request): Response
     {
         $q = trim((string) $request->query('q', ''));
+        $selectedCategoryId = (int) $request->query('category_id', 0);
+
+        $topCategories = Category::query()
+            ->select(['categories.id', 'categories.name'])
+            ->join('products', 'products.category_id', '=', 'categories.id')
+            ->join('sale_items', 'sale_items.product_id', '=', 'products.id')
+            ->where('categories.is_active', true)
+            ->where('products.is_active', true)
+            ->groupBy('categories.id', 'categories.name')
+            ->orderByRaw('SUM(sale_items.quantity) DESC')
+            ->limit(5)
+            ->get();
+
+        if ($topCategories->count() < 5) {
+            $excluded = $topCategories->pluck('id');
+            $fallback = Category::query()
+                ->select(['categories.id', 'categories.name'])
+                ->join('products', 'products.category_id', '=', 'categories.id')
+                ->where('categories.is_active', true)
+                ->where('products.is_active', true)
+                ->when($excluded->isNotEmpty(), fn ($query) => $query->whereNotIn('categories.id', $excluded))
+                ->groupBy('categories.id', 'categories.name')
+                ->orderBy('categories.name')
+                ->limit(5 - $topCategories->count())
+                ->get();
+
+            $topCategories = $topCategories->concat($fallback);
+        }
+
+        $selectedCategoryId = $selectedCategoryId > 0 && $topCategories->pluck('id')->contains($selectedCategoryId)
+            ? $selectedCategoryId
+            : 0;
 
         $products = Product::query()
-            ->select(['id', 'name', 'unit_label', 'description', 'sku', 'stock', 'price', 'expires_at', 'photo'])
+            ->select(['id', 'category_id', 'name', 'unit_label', 'description', 'sku', 'stock', 'price', 'expires_at', 'photo'])
             ->where('is_active', true)
             ->with(['presentations' => function ($query) {
                 $query->where('is_active', true)
                     ->orderBy('factor')
                     ->select(['id', 'product_id', 'name', 'factor', 'price', 'is_active']);
             }])
+            ->when($selectedCategoryId > 0, fn ($query) => $query->where('category_id', $selectedCategoryId))
             ->when($q !== '', function ($builder) use ($q) {
                 $builder->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
@@ -55,12 +90,30 @@ class PosController extends Controller
             ->latest('opened_at')
             ->first();
 
+        $clients = Client::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->limit(100)
+            ->get(['id', 'name', 'phone', 'tax_id']);
+
         return Inertia::render('Pos/Index', [
             'products' => $products,
             'filters' => [
                 'q' => $q,
             ],
+            'top_categories' => $topCategories->map(fn (Category $category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ])->values(),
+            'selected_category_id' => $selectedCategoryId,
+            'clients' => $clients->map(fn (Client $client) => [
+                'id' => $client->id,
+                'name' => $client->name,
+                'phone' => $client->phone,
+                'tax_id' => $client->tax_id,
+            ])->values(),
             'defaults' => [
+                'customer_id' => null,
                 'customer_name' => 'CF',
                 'sale_code' => $this->generateSaleCode(),
             ],
@@ -78,6 +131,7 @@ class PosController extends Controller
     {
         $data = $request->validate([
             'sale_code' => ['nullable', 'string', 'max:50', Rule::unique('sales', 'sale_code')],
+            'customer_id' => ['nullable', 'integer', 'exists:clients,id'],
             'customer_name' => ['nullable', 'string', 'max:120'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
@@ -171,10 +225,20 @@ class PosController extends Controller
                     throw new \RuntimeException('La suma de pagos debe ser igual al total de la venta.');
                 }
 
+                $clientId = isset($data['customer_id']) ? (int) $data['customer_id'] : null;
+                $client = $clientId ? Client::query()->find($clientId) : null;
+                if ($client && ! $client->is_active) {
+                    throw new \RuntimeException('El cliente seleccionado está inactivo.');
+                }
+
+                $resolvedCustomerName = $client?->name
+                    ?: (trim((string) ($data['customer_name'] ?? '')) !== '' ? trim((string) $data['customer_name']) : 'CF');
+
                 $sale = Sale::create([
                     'sale_code' => trim((string) ($data['sale_code'] ?? '')) !== '' ? trim((string) $data['sale_code']) : $this->generateSaleCode(),
                     'user_id' => $user->id,
-                    'customer_name' => trim((string) ($data['customer_name'] ?? '')) !== '' ? trim((string) $data['customer_name']) : 'CF',
+                    'customer_id' => $client?->id,
+                    'customer_name' => $resolvedCustomerName,
                     'cash_session_id' => $session->id,
                     'items_count' => $totalUnits,
                     'total' => round($total, 2),

@@ -32,7 +32,7 @@
     "src": "node_modules/@fortawesome/fontawesome-free/webfonts/fa-v4compatibility.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-CzxIhfoA.css",
+    "file": "assets/app-CJqoCD16.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -47,7 +47,7 @@
     "isEntry": true
   },
   "resources/js/pos-app.js": {
-    "file": "assets/pos-app-g4qJr6Xd.js",
+    "file": "assets/pos-app-DZBATyzd.js",
     "name": "pos-app",
     "src": "resources/js/pos-app.js",
     "isEntry": true,
@@ -55,8 +55,8 @@
       "resources/js/app.js"
     ],
     "css": [
-      "assets/pos-app-C7Hf6pC1.css",
-      "assets/app-CzxIhfoA.css"
+      "assets/pos-app-BeZdxQxo.css",
+      "assets/app-CJqoCD16.css"
     ],
     "assets": [
       "assets/fa-brands-400-D_cYUPeE.woff2",

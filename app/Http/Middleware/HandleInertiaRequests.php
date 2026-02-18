@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AppSetting;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -51,6 +52,17 @@ class HandleInertiaRequests extends Middleware
                     'can_switch_branch' => $user->canSwitchBranch(),
                     'home' => $user->defaultHomeRoute(),
                 ] : null,
+            ],
+            'app' => [
+                'settings' => function () {
+                    $settings = AppSetting::current();
+
+                    return [
+                        'primary_color' => $settings->primary_color,
+                        'secondary_color' => $settings->secondary_color,
+                        'logo_url' => $settings->logoUrl(),
+                    ];
+                },
             ],
         ];
     }

@@ -15,6 +15,8 @@ use Inertia\Response;
 
 class CashController extends Controller
 {
+    private const PAYMENT_METHODS = ['cash', 'card', 'transfer'];
+
     public function index(Request $request): Response
     {
         $session = $this->openSessionForUser($request);
@@ -27,6 +29,9 @@ class CashController extends Controller
         $summary = [
             'opening' => 0,
             'cash_sales' => 0,
+            'card_sales' => 0,
+            'transfer_sales' => 0,
+            'total_sales' => 0,
             'incomes' => 0,
             'expenses' => 0,
             'expected' => 0,
@@ -36,7 +41,7 @@ class CashController extends Controller
         $recentMovements = [];
 
         if ($session) {
-            $salesByMethod = SalePayment::query()
+            $rawSalesByMethod = SalePayment::query()
                 ->where('cash_session_id', $session->id)
                 ->select('method')
                 ->selectRaw('sum(amount) as total')
@@ -45,23 +50,34 @@ class CashController extends Controller
                 ->map(fn ($value) => (float) $value)
                 ->toArray();
 
+            $salesByMethod = collect(self::PAYMENT_METHODS)
+                ->mapWithKeys(fn (string $method) => [$method => (float) ($rawSalesByMethod[$method] ?? 0)])
+                ->toArray();
+
             $incomes = (float) CashMovement::query()
                 ->where('cash_session_id', $session->id)
                 ->where('type', 'income')
+                ->where('method', 'cash')
                 ->sum('amount');
 
             $expenses = (float) CashMovement::query()
                 ->where('cash_session_id', $session->id)
                 ->where('type', 'expense')
+                ->where('method', 'cash')
                 ->sum('amount');
 
             $cashSales = (float) ($salesByMethod['cash'] ?? 0);
+            $cardSales = (float) ($salesByMethod['card'] ?? 0);
+            $transferSales = (float) ($salesByMethod['transfer'] ?? 0);
             $opening = (float) $session->opening_amount;
             $expected = round($opening + $cashSales + $incomes - $expenses, 2);
 
             $summary = [
                 'opening' => $opening,
                 'cash_sales' => $cashSales,
+                'card_sales' => $cardSales,
+                'transfer_sales' => $transferSales,
+                'total_sales' => round($cashSales + $cardSales + $transferSales, 2),
                 'incomes' => $incomes,
                 'expenses' => $expenses,
                 'expected' => $expected,
@@ -142,6 +158,7 @@ class CashController extends Controller
     {
         $data = $request->validate([
             'type' => ['required', 'string', 'in:income,expense'],
+            'method' => ['required', 'string', 'in:cash,card,transfer'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'note' => ['required', 'string', 'max:500'],
         ]);
@@ -155,7 +172,7 @@ class CashController extends Controller
             'cash_session_id' => $session->id,
             'user_id' => $request->user()->id,
             'type' => $data['type'],
-            'method' => 'cash',
+            'method' => $data['method'],
             'amount' => $data['amount'],
             'note' => $data['note'],
         ]);
@@ -178,21 +195,26 @@ class CashController extends Controller
             return back()->withErrors(['cash' => 'No tienes una caja abierta.']);
         }
 
-        $salesByMethod = SalePayment::query()
+        $rawSalesByMethod = SalePayment::query()
             ->where('cash_session_id', $session->id)
             ->select('method')
             ->selectRaw('sum(amount) as total')
             ->groupBy('method')
             ->pluck('total', 'method');
 
+        $salesByMethod = collect(self::PAYMENT_METHODS)
+            ->mapWithKeys(fn (string $method) => [$method => (float) ($rawSalesByMethod[$method] ?? 0)]);
+
         $incomes = (float) CashMovement::query()
             ->where('cash_session_id', $session->id)
             ->where('type', 'income')
+            ->where('method', 'cash')
             ->sum('amount');
 
         $expenses = (float) CashMovement::query()
             ->where('cash_session_id', $session->id)
             ->where('type', 'expense')
+            ->where('method', 'cash')
             ->sum('amount');
 
         $cashSales = (float) ($salesByMethod['cash'] ?? 0);

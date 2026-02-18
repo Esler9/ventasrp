@@ -13,7 +13,7 @@
                     </button>
                     <div>
                         <p class="text-xl font-semibold">Nueva Venta #{{ displaySaleCode }}</p>
-                        <p class="text-xs text-slate-400">Cliente: {{ saleForm.customer_name || 'CF' }}</p>
+                        <p class="text-xs text-slate-400">Cliente: {{ selectedClientName }}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -55,14 +55,22 @@
 
                 <div class="flex gap-2 overflow-x-auto pb-1">
                     <button
-                        v-for="tag in tags"
-                        :key="tag"
                         type="button"
                         class="whitespace-nowrap rounded-full border px-4 py-2 text-sm"
-                        :class="selectedTag === tag ? 'border-sky-500 bg-sky-500 text-white' : 'border-slate-700 bg-slate-900/70 text-slate-300'"
-                        @click="selectedTag = tag"
+                        :class="selectedCategoryId === null ? 'border-sky-500 bg-sky-500 text-white' : 'border-slate-700 bg-slate-900/70 text-slate-300'"
+                        @click="setCategory(null)"
                     >
-                        {{ tag }}
+                        Todas
+                    </button>
+                    <button
+                        v-for="category in topCategories"
+                        :key="category.id"
+                        type="button"
+                        class="whitespace-nowrap rounded-full border px-4 py-2 text-sm"
+                        :class="selectedCategoryId === category.id ? 'border-sky-500 bg-sky-500 text-white' : 'border-slate-700 bg-slate-900/70 text-slate-300'"
+                        @click="setCategory(category.id)"
+                    >
+                        {{ category.name }}
                     </button>
                 </div>
             </section>
@@ -75,7 +83,15 @@
                         class="group overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-sm"
                     >
                         <div class="relative h-36 bg-slate-800">
-                            <img v-if="product.photo_url" :src="product.photo_url" :alt="product.name" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                            <button
+                                v-if="product.photo_url"
+                                type="button"
+                                class="h-full w-full cursor-zoom-in"
+                                :aria-label="`Ver foto de ${product.name}`"
+                                @click="openPhoto(product)"
+                            >
+                                <img :src="product.photo_url" :alt="`Foto de ${product.name}`" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                            </button>
                             <div v-else class="flex h-full w-full items-center justify-center text-slate-500">
                                 <i class="fa-solid fa-box text-2xl"></i>
                             </div>
@@ -115,7 +131,7 @@
             </section>
         </div>
 
-        <div class="fixed bottom-16 left-0 right-0 z-30">
+        <div class="fixed left-0 right-0 z-30" :style="checkoutDockStyle">
             <div class="mx-auto max-w-6xl px-4">
                 <section class="rounded-t-3xl border border-slate-800 bg-slate-900/95 shadow-2xl backdrop-blur">
                     <button type="button" class="flex w-full flex-col gap-2 px-4 pb-3 pt-2 text-left" @click="drawerOpen = !drawerOpen">
@@ -135,9 +151,55 @@
                                 <label class="text-xs text-slate-400">Código de venta</label>
                                 <input v-model="saleForm.sale_code" type="text" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm" />
                             </div>
-                            <div>
-                                <label class="text-xs text-slate-400">Cliente</label>
-                                <input v-model="saleForm.customer_name" type="text" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm" />
+                            <div class="space-y-1">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs text-slate-400">Cliente</label>
+                                    <button
+                                        v-if="canCreateClient"
+                                        type="button"
+                                        class="rounded-md border border-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:bg-slate-800"
+                                        @click="toggleQuickClient"
+                                    >
+                                        {{ quickClientOpen ? 'Cancelar' : '+ Rápido' }}
+                                    </button>
+                                </div>
+                                <select v-model="saleForm.customer_id" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm">
+                                    <option :value="null">Consumidor Final (CF)</option>
+                                    <option v-for="client in clientsOptions" :key="client.id" :value="client.id">
+                                        {{ client.name }}{{ client.tax_id ? ` · ${client.tax_id}` : '' }}
+                                    </option>
+                                </select>
+                                <div v-if="quickClientOpen && canCreateClient" class="space-y-2 rounded-xl border border-slate-700 bg-slate-950/60 p-3">
+                                    <input
+                                        v-model="quickClient.name"
+                                        type="text"
+                                        placeholder="Nombre del cliente"
+                                        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"
+                                    />
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input
+                                            v-model="quickClient.phone"
+                                            type="text"
+                                            placeholder="Teléfono"
+                                            class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"
+                                        />
+                                        <input
+                                            v-model="quickClient.tax_id"
+                                            type="text"
+                                            placeholder="NIT"
+                                            class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"
+                                        />
+                                    </div>
+                                    <p v-if="quickClientError" class="text-xs text-rose-300">{{ quickClientError }}</p>
+                                    <button
+                                        type="button"
+                                        class="w-full rounded-lg bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                                        :disabled="quickClientSaving"
+                                        @click="createQuickClient"
+                                    >
+                                        {{ quickClientSaving ? 'Guardando...' : 'Guardar cliente rápido' }}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -186,12 +248,35 @@
             </div>
         </div>
 
+        <div
+            v-if="previewPhotoUrl"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+            role="dialog"
+            aria-modal="true"
+            @click.self="closePhoto"
+        >
+            <button
+                type="button"
+                class="absolute right-4 top-4 rounded-full bg-black/60 px-3 py-2 text-sm font-semibold text-white hover:bg-black/75"
+                aria-label="Cerrar vista ampliada"
+                @click="closePhoto"
+            >
+                Cerrar
+            </button>
+            <img
+                :src="previewPhotoUrl"
+                :alt="previewPhotoName ? `Foto de ${previewPhotoName}` : 'Foto de producto ampliada'"
+                class="max-h-[85vh] max-w-[95vw] rounded-xl object-contain"
+            />
+        </div>
+
         <BottomNav />
     </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import axios from 'axios';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { router, useForm, usePage } from '@inertiajs/vue3';
 import BottomNav from '../../Components/BottomNav.vue';
 import FlashBanner from '../../Components/FlashBanner.vue';
@@ -201,7 +286,10 @@ import { useTheme } from '../../composables/useTheme';
 const props = defineProps({
     products: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({ q: '' }) },
-    defaults: { type: Object, default: () => ({ sale_code: '', customer_name: 'CF' }) },
+    top_categories: { type: Array, default: () => [] },
+    selected_category_id: { type: Number, default: 0 },
+    clients: { type: Array, default: () => [] },
+    defaults: { type: Object, default: () => ({ sale_code: '', customer_id: null, customer_name: 'CF' }) },
     open_cash_session: { type: Object, default: null },
 });
 
@@ -209,13 +297,25 @@ const { theme, toggleTheme } = useTheme();
 const page = usePage();
 const search = ref(props.filters.q || '');
 const products = ref(props.products);
+const selectedCategoryId = ref(props.selected_category_id > 0 ? props.selected_category_id : null);
 const cart = ref([]);
 const drawerOpen = ref(false);
-const tags = ['Todos', 'Bebidas', 'Snacks', 'Electronica'];
-const selectedTag = ref('Todos');
+const topCategories = computed(() => props.top_categories || []);
+const clientsOptions = ref([...(props.clients || [])]);
+const quickClientOpen = ref(false);
+const quickClientSaving = ref(false);
+const quickClientError = ref('');
+const quickClient = ref({
+    name: '',
+    phone: '',
+    tax_id: '',
+});
+const previewPhotoUrl = ref(null);
+const previewPhotoName = ref('');
 
 const saleForm = useForm({
     sale_code: props.defaults.sale_code || '',
+    customer_id: props.defaults.customer_id || null,
     customer_name: props.defaults.customer_name || 'CF',
     items: [],
     payments: [{ method: 'cash', amount: 0 }],
@@ -228,10 +328,35 @@ const canChangePrice = computed(() => {
     return permissions.includes('*') || permissions.includes('pos.change_price');
 });
 
+const canCreateClient = computed(() => {
+    const permissions = page.props.auth?.user?.permissions || [];
+    return permissions.includes('*') || permissions.includes('clients.create');
+});
+
+const selectedClientName = computed(() => {
+    if (!saleForm.customer_id) return saleForm.customer_name || 'CF';
+    const found = clientsOptions.value.find((client) => Number(client.id) === Number(saleForm.customer_id));
+    return found?.name || saleForm.customer_name || 'CF';
+});
+
 watch(
     () => props.products,
     (value) => {
         products.value = value;
+    },
+);
+
+watch(
+    () => props.clients,
+    (value) => {
+        clientsOptions.value = [...(value || [])];
+    },
+);
+
+watch(
+    () => props.selected_category_id,
+    (value) => {
+        selectedCategoryId.value = value > 0 ? value : null;
     },
 );
 
@@ -243,11 +368,28 @@ const debounce = (fn, delay = 300) => {
     };
 };
 
-const debouncedSearch = debounce((value) => {
-    router.get('/pos', { q: value }, { replace: true, preserveState: true, preserveScroll: true });
+const fetchProducts = (overrides = {}) => {
+    router.get(
+        '/pos',
+        {
+            q: search.value || undefined,
+            category_id: selectedCategoryId.value ?? undefined,
+            ...overrides,
+        },
+        { replace: true, preserveState: true, preserveScroll: true },
+    );
+};
+
+const debouncedSearch = debounce(() => {
+    fetchProducts();
 });
 
-watch(search, (value) => debouncedSearch(value));
+watch(search, () => debouncedSearch());
+
+const setCategory = (categoryId) => {
+    selectedCategoryId.value = categoryId;
+    fetchProducts();
+};
 
 const addProduct = (product) => {
     const existing = cart.value.find((item) => item.product_id === product.id && item.presentation_name === (product.unit_label || 'Unidad'));
@@ -294,6 +436,21 @@ watch(total, (value) => {
     }
 });
 
+watch(
+    () => saleForm.customer_id,
+    (value) => {
+        if (!value) {
+            saleForm.customer_name = 'CF';
+            return;
+        }
+
+        const found = clientsOptions.value.find((client) => Number(client.id) === Number(value));
+        if (found) {
+            saleForm.customer_name = found.name;
+        }
+    },
+);
+
 const addPayment = () => {
     saleForm.payments.push({ method: 'cash', amount: 0 });
 };
@@ -322,18 +479,109 @@ const submitSale = () => {
             cart.value = [];
             saleForm.payments = [{ method: 'cash', amount: 0 }];
             saleForm.sale_code = '';
+            saleForm.customer_id = null;
             saleForm.customer_name = 'CF';
             drawerOpen.value = false;
+            quickClientOpen.value = false;
+            quickClient.value = { name: '', phone: '', tax_id: '' };
         },
     });
 };
 
+const toggleQuickClient = () => {
+    quickClientOpen.value = !quickClientOpen.value;
+    quickClientError.value = '';
+    if (!quickClientOpen.value) {
+        quickClient.value = { name: '', phone: '', tax_id: '' };
+    }
+};
+
+const createQuickClient = async () => {
+    const name = quickClient.value.name.trim();
+    if (!name) {
+        quickClientError.value = 'Ingresa el nombre del cliente.';
+        return;
+    }
+
+    quickClientSaving.value = true;
+    quickClientError.value = '';
+
+    try {
+        const response = await axios.post(
+            '/admin/clients',
+            {
+                name,
+                phone: quickClient.value.phone?.trim() || null,
+                tax_id: quickClient.value.tax_id?.trim() || null,
+                is_active: true,
+            },
+            {
+                headers: {
+                    Accept: 'application/json',
+                },
+            },
+        );
+
+        const created = {
+            id: Number(response.data.id),
+            name: response.data.name,
+            phone: response.data.phone,
+            tax_id: response.data.tax_id,
+        };
+
+        clientsOptions.value = [...clientsOptions.value, created]
+            .filter((client, index, array) => array.findIndex((item) => Number(item.id) === Number(client.id)) === index)
+            .sort((a, b) => String(a.name).localeCompare(String(b.name), 'es'));
+
+        saleForm.customer_id = created.id;
+        saleForm.customer_name = created.name;
+        quickClient.value = { name: '', phone: '', tax_id: '' };
+        quickClientOpen.value = false;
+    } catch (error) {
+        quickClientError.value = error?.response?.data?.errors?.name?.[0]
+            || error?.response?.data?.message
+            || 'No se pudo crear el cliente.';
+    } finally {
+        quickClientSaving.value = false;
+    }
+};
+
+const bottomNavHeight = '5.5rem';
+
+const checkoutDockStyle = computed(() => ({
+    bottom: `calc(${bottomNavHeight} + env(safe-area-inset-bottom, 0px))`,
+}));
+
 const contentSafeArea = computed(() => ({
-    paddingBottom: 'calc(13rem + env(safe-area-inset-bottom, 0px))',
+    paddingBottom: `calc(13rem + ${bottomNavHeight} + env(safe-area-inset-bottom, 0px))`,
 }));
 
 const logoutForm = useForm({});
 const logout = () => logoutForm.post('/logout');
 
 const money = (value) => Number(value || 0).toFixed(2);
+
+const openPhoto = (product) => {
+    previewPhotoUrl.value = product.photo_url || null;
+    previewPhotoName.value = product.name || '';
+};
+
+const closePhoto = () => {
+    previewPhotoUrl.value = null;
+    previewPhotoName.value = '';
+};
+
+const onKeydown = (event) => {
+    if (event.key === 'Escape' && previewPhotoUrl.value) {
+        closePhoto();
+    }
+};
+
+onMounted(() => {
+    window.addEventListener('keydown', onKeydown);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('keydown', onKeydown);
+});
 </script>

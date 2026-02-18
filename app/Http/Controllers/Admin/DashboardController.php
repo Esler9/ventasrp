@@ -33,6 +33,24 @@ class DashboardController extends Controller
                 'button' => 'Ver productos',
             ],
             [
+                'key' => 'categories',
+                'title' => 'Categorías',
+                'headline' => 'Organización',
+                'description' => 'Administra categorías de productos',
+                'href' => '/admin/categories',
+                'permission' => 'categories.view',
+                'button' => 'Ver categorías',
+            ],
+            [
+                'key' => 'clients',
+                'title' => 'Clientes',
+                'headline' => 'Base comercial',
+                'description' => 'Gestiona clientes y datos de facturación',
+                'href' => '/admin/clients',
+                'permission' => 'clients.view',
+                'button' => 'Ver clientes',
+            ],
+            [
                 'key' => 'sales',
                 'title' => 'Ventas',
                 'headline' => 'Historial',
@@ -51,6 +69,15 @@ class DashboardController extends Controller
                 'button' => 'Ir a caja',
             ],
             [
+                'key' => 'reports',
+                'title' => 'Reportes',
+                'headline' => 'Decisiones',
+                'description' => 'Indicadores de ventas, clientes y productos',
+                'href' => '/admin/reports',
+                'permission' => 'reports.view',
+                'button' => 'Ver reportes',
+            ],
+            [
                 'key' => 'users',
                 'title' => 'Usuarios',
                 'headline' => 'Equipo y accesos',
@@ -58,6 +85,15 @@ class DashboardController extends Controller
                 'href' => '/admin/users',
                 'permission' => 'users.view',
                 'button' => 'Gestionar usuarios',
+            ],
+            [
+                'key' => 'settings',
+                'title' => 'Configuraciones',
+                'headline' => 'Marca y tema',
+                'description' => 'Logo y colores del sistema',
+                'href' => '/admin/settings',
+                'permission' => 'settings.view',
+                'button' => 'Abrir configuración',
             ],
         ];
 
