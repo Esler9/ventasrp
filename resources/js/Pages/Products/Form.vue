@@ -98,9 +98,30 @@
                         />
                     </div>
                     <div class="space-y-1">
+                        <label class="text-sm text-gray-300">Costo (Q)</label>
+                        <input
+                            v-model.number="form.cost_price"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            class="w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
+                            required
+                        />
+                    </div>
+                    <div class="space-y-1">
                         <label class="text-sm text-gray-300">Stock</label>
                         <input
                             v-model.number="form.stock"
+                            type="number"
+                            min="0"
+                            class="w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
+                            required
+                        />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm text-gray-300">Stock de alerta</label>
+                        <input
+                            v-model.number="form.stock_alert"
                             type="number"
                             min="0"
                             class="w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 focus:ring-amber-400"
@@ -271,7 +292,9 @@ const form = useForm({
     description: props.product?.description ?? '',
     sku: props.product?.sku ?? '',
     price: props.product?.price ?? '',
+    cost_price: props.product?.cost_price ?? 0,
     stock: props.product?.stock ?? 0,
+    stock_alert: props.product?.stock_alert ?? 5,
     expires_at: props.product?.expires_at ?? '',
     is_active: props.product?.is_active ?? true,
     photo: null,

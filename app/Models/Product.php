@@ -17,13 +17,17 @@ class Product extends Model
         'photo',
         'sku',
         'price',
+        'cost_price',
         'stock',
+        'stock_alert',
         'expires_at',
         'is_active',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
+        'cost_price' => 'decimal:2',
+        'stock_alert' => 'integer',
         'expires_at' => 'date',
         'is_active' => 'bool',
     ];

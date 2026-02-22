@@ -19,7 +19,7 @@ class ProductController extends Controller
         $q = trim((string) $request->query('q', ''));
 
         $products = Product::query()
-            ->select(['id', 'category_id', 'name', 'unit_label', 'description', 'sku', 'price', 'stock', 'expires_at', 'is_active', 'photo'])
+            ->select(['id', 'category_id', 'name', 'unit_label', 'description', 'sku', 'price', 'cost_price', 'stock', 'stock_alert', 'expires_at', 'is_active', 'photo'])
             ->where('is_active', true)
             ->with('category:id,name')
             ->when($q !== '', function ($builder) use ($q) {
@@ -45,7 +45,9 @@ class ProductController extends Controller
                 'description' => $product->description,
                 'sku' => $product->sku,
                 'price' => $product->price,
+                'cost_price' => $product->cost_price,
                 'stock' => $product->stock,
+                'stock_alert' => $product->stock_alert,
                 'expires_at' => optional($product->expires_at)->toDateString(),
                 'is_active' => $product->is_active,
                 'photo' => $product->photo,
@@ -77,7 +79,9 @@ class ProductController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku'],
             'price' => ['required', 'numeric', 'min:0'],
+            'cost_price' => ['required', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
+            'stock_alert' => ['required', 'integer', 'min:0'],
             'expires_at' => ['nullable', 'date'],
             'is_active' => ['nullable', 'boolean'],
             'photo' => ['nullable', 'image'],
@@ -120,7 +124,9 @@ class ProductController extends Controller
                 'description' => $product->description,
                 'sku' => $product->sku,
                 'price' => $product->price,
+                'cost_price' => $product->cost_price,
                 'stock' => $product->stock,
+                'stock_alert' => $product->stock_alert,
                 'expires_at' => optional($product->expires_at)->toDateString(),
                 'is_active' => $product->is_active,
                 'photo' => $product->photo,
@@ -146,7 +152,9 @@ class ProductController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'sku' => ['nullable', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($product->id)],
             'price' => ['required', 'numeric', 'min:0'],
+            'cost_price' => ['required', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
+            'stock_alert' => ['required', 'integer', 'min:0'],
             'expires_at' => ['nullable', 'date'],
             'is_active' => ['nullable', 'boolean'],
             'photo' => ['nullable', 'image'],
