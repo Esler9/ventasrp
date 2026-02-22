@@ -90,7 +90,7 @@
                             <article
                                 v-for="product in products"
                                 :key="product.id"
-                                class="group overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-sm"
+                                class="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-sm"
                             >
                                 <div class="relative h-36 bg-slate-800">
                                     <button
@@ -119,12 +119,12 @@
                                     </div>
                                 </div>
 
-                                <div class="space-y-2 p-3">
-                                    <span class="inline-flex rounded-lg bg-sky-900/50 px-2 py-1 text-xs font-semibold text-sky-300">
+                                <div class="flex flex-1 flex-col gap-2 p-3">
+                                    <span class="inline-flex max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-lg bg-sky-900/50 px-2 py-1 text-xs font-semibold text-sky-300">
                                         {{ product.sku || 'SIN-SKU' }}
                                     </span>
                                     <h3 class="line-clamp-2 min-h-12 text-base font-semibold leading-tight">{{ product.name }}</h3>
-                                    <div class="flex items-end justify-between">
+                                    <div class="mt-auto flex items-end justify-between">
                                         <p class="text-3xl font-bold tracking-tight">Q{{ money(product.price) }}</p>
                                         <button
                                             type="button"
