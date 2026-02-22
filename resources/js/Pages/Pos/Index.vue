@@ -40,8 +40,8 @@
                 </button>
             </div>
 
-            <div class="grid gap-4 lg:min-h-0 lg:flex-1 lg:items-start" :class="desktopCheckoutCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[minmax(0,1fr)_26rem]'">
-                <section class="space-y-4 lg:flex lg:min-h-0 lg:flex-col lg:space-y-3">
+            <div class="grid gap-4 lg:min-h-0 lg:h-full lg:flex-1" :class="desktopCheckoutCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[minmax(0,1fr)_26rem]'">
+                <section class="space-y-4 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:space-y-3">
                     <div v-if="!openCashSession" class="rounded-xl border border-rose-700/60 bg-rose-900/20 p-3 text-sm text-rose-200">
                         Debes abrir caja antes de vender.
                         <a href="/admin/cash" class="font-semibold underline">Ir a Caja</a>
