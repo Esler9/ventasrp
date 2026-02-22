@@ -144,7 +144,7 @@
                     </section>
                 </section>
 
-                <aside v-if="!desktopCheckoutCollapsed" class="hidden lg:sticky lg:top-24 lg:flex lg:h-[calc(100vh-7.5rem)] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-800 lg:bg-slate-900/95">
+                <aside v-if="!desktopCheckoutCollapsed" class="hidden lg:sticky lg:top-24 lg:flex lg:h-[calc(100vh-11.5rem)] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-800 lg:bg-slate-900/95">
                     <div class="border-b border-slate-800 p-4">
                         <div class="flex items-center justify-between">
                             <p class="text-xs uppercase tracking-wide text-slate-400">Detalle de venta</p>
@@ -255,7 +255,7 @@
                         </section>
                     </div>
 
-                    <div class="border-t border-slate-800 bg-slate-900 p-4">
+                    <div class="shrink-0 border-t border-slate-800 bg-slate-900 p-4">
                         <p class="text-xs uppercase tracking-wide text-slate-400">Resumen de venta</p>
                         <p class="mt-1 text-5xl font-bold leading-none">Q{{ money(total) }}</p>
                         <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
