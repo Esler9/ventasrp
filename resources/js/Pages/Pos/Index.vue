@@ -289,12 +289,12 @@
 
         <div class="fixed inset-x-0 z-30 lg:hidden" :style="checkoutDockStyle">
             <div class="mx-auto max-w-7xl px-4">
-                <section class="rounded-2xl border border-slate-800 bg-slate-900/95 px-3 py-2 shadow-2xl backdrop-blur">
+                <section class="rounded-2xl border border-slate-800 bg-slate-900/95 px-3 pb-3 pt-2.5 shadow-2xl backdrop-blur">
                     <div class="flex items-center justify-between gap-3">
                         <div class="min-w-0">
                             <p class="text-[11px] uppercase tracking-wide text-slate-400">Total ({{ itemsCount }} items)</p>
-                            <p class="text-3xl font-bold leading-none">Q{{ money(total) }}</p>
-                            <p class="text-[11px]" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
+                            <p class="text-3xl font-bold leading-tight">Q{{ money(total) }}</p>
+                            <p class="mt-0.5 text-[11px]" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
                         </div>
                         <button
                             type="button"
