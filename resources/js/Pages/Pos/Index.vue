@@ -146,21 +146,10 @@
 
                 <aside v-if="!desktopCheckoutCollapsed" class="hidden lg:sticky lg:top-24 lg:flex lg:h-[calc(100vh-7.5rem)] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-800 lg:bg-slate-900/95">
                     <div class="border-b border-slate-800 p-4">
-                        <div class="mb-2 flex items-center justify-between">
-                            <p class="text-xs uppercase tracking-wide text-slate-400">Total ({{ itemsCount }} items)</p>
+                        <div class="flex items-center justify-between">
+                            <p class="text-xs uppercase tracking-wide text-slate-400">Detalle de venta</p>
                             <button type="button" class="text-xs text-slate-400 hover:text-slate-200" @click="desktopCheckoutCollapsed = true">Ocultar</button>
                         </div>
-                        <p class="text-5xl font-bold leading-none">Q{{ money(total) }}</p>
-                        <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
-                        <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
-                        <button
-                            type="button"
-                            class="mt-3 w-full rounded-2xl bg-sky-500 px-4 py-3 text-lg font-semibold text-white shadow-lg shadow-sky-700/30 disabled:opacity-50"
-                            :disabled="!canSubmit"
-                            @click="submitSale"
-                        >
-                            Pagar Ahora <i class="fa-solid fa-arrow-right ml-2"></i>
-                        </button>
                     </div>
 
                     <div class="flex-1 space-y-3 overflow-y-auto p-4">
@@ -219,34 +208,66 @@
                             </div>
                         </div>
 
-                        <article v-for="(item, index) in cart" :key="item.row_key" class="rounded-xl border border-slate-700 bg-slate-950/60 p-3">
-                            <div class="flex items-start justify-between">
-                                <div>
-                                    <p class="font-semibold">{{ item.name }}</p>
-                                    <p class="text-xs text-slate-400">{{ item.presentation_name }}</p>
-                                </div>
-                                <button type="button" class="text-xs text-rose-300" @click="removeItem(index)">Quitar</button>
+                        <section class="rounded-xl border border-sky-800/60 bg-sky-950/20 p-3">
+                            <div class="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-300">
+                                <i class="fa-solid fa-bag-shopping"></i>
+                                <span>Productos agregados</span>
                             </div>
-                            <div class="mt-2 grid grid-cols-3 gap-2">
-                                <input v-model.number="item.quantity" type="number" min="1" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm" />
-                                <input v-model.number="item.price" :disabled="!canChangePrice" type="number" min="0" step="0.01" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm disabled:opacity-60" />
-                                <div class="flex items-center justify-end text-sm font-semibold">Q{{ money(item.quantity * item.price) }}</div>
+                            <div class="space-y-2">
+                                <article v-for="(item, index) in cart" :key="item.row_key" class="rounded-xl border border-sky-900/70 bg-slate-950/70 p-3">
+                                    <div class="flex items-start justify-between">
+                                        <div>
+                                            <p class="font-semibold">{{ item.name }}</p>
+                                            <p class="text-xs text-slate-400">{{ item.presentation_name }}</p>
+                                        </div>
+                                        <button type="button" class="text-xs text-rose-300" @click="removeItem(index)">Quitar</button>
+                                    </div>
+                                    <div class="mt-2 grid grid-cols-3 gap-2">
+                                        <input v-model.number="item.quantity" type="number" min="1" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm" />
+                                        <input v-model.number="item.price" :disabled="!canChangePrice" type="number" min="0" step="0.01" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm disabled:opacity-60" />
+                                        <div class="flex flex-col items-end justify-center">
+                                            <p class="text-[10px] uppercase tracking-wide text-sky-300">Subtotal</p>
+                                            <p class="text-sm font-bold text-sky-200">Q{{ money(item.quantity * item.price) }}</p>
+                                        </div>
+                                    </div>
+                                </article>
+                                <p v-if="!cart.length" class="rounded-lg border border-dashed border-slate-700 px-3 py-3 text-xs text-slate-400">
+                                    No hay productos agregados.
+                                </p>
                             </div>
-                        </article>
+                        </section>
 
-                        <div class="space-y-2 rounded-xl border border-slate-700 bg-slate-950/60 p-3">
-                            <p class="text-xs text-slate-400">Pagos</p>
+                        <section class="space-y-2 rounded-xl border border-amber-700/50 bg-amber-950/20 p-3">
+                            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-300">
+                                <i class="fa-solid fa-credit-card"></i>
+                                <span>Formas de pago</span>
+                            </div>
                             <div v-for="(payment, idx) in saleForm.payments" :key="`desk-pay-${idx}`" class="grid grid-cols-5 gap-2">
-                                <select v-model="payment.method" class="col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm">
+                                <select v-model="payment.method" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm">
                                     <option value="cash">Efectivo</option>
                                     <option value="card">Tarjeta</option>
                                     <option value="transfer">Transferencia</option>
                                 </select>
-                                <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm" />
-                                <button type="button" class="rounded-lg border border-slate-700 text-xs" @click="removePayment(idx)">X</button>
+                                <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
+                                <button type="button" class="rounded-lg border border-amber-800/60 text-xs" @click="removePayment(idx)">X</button>
                             </div>
-                            <button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-xs" @click="addPayment">Agregar método</button>
-                        </div>
+                            <button type="button" class="rounded-lg border border-amber-700/70 px-3 py-2 text-xs text-amber-200" @click="addPayment">Agregar método</button>
+                        </section>
+                    </div>
+
+                    <div class="border-t border-slate-800 bg-slate-900 p-4">
+                        <p class="text-xs uppercase tracking-wide text-slate-400">Resumen de venta</p>
+                        <p class="mt-1 text-5xl font-bold leading-none">Q{{ money(total) }}</p>
+                        <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
+                        <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
+                        <button
+                            type="button"
+                            class="mt-3 w-full rounded-2xl bg-sky-500 px-4 py-3 text-lg font-semibold text-white shadow-lg shadow-sky-700/30 disabled:opacity-50"
+                            :disabled="!canSubmit"
+                            @click="submitSale"
+                        >
+                            Pagar Ahora <i class="fa-solid fa-arrow-right ml-2"></i>
+                        </button>
                     </div>
                 </aside>
             </div>
@@ -278,27 +299,14 @@
             <div class="flex h-full flex-col">
                 <div class="border-b border-slate-800 px-4 py-3">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-xs uppercase tracking-wide text-slate-400">Datos de venta</p>
-                            <p class="text-4xl font-bold leading-none">Q{{ money(total) }}</p>
-                            <p class="text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
-                        </div>
+                        <p class="text-xs uppercase tracking-wide text-slate-400">Detalle de venta</p>
                         <button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200" @click="mobileCheckoutOpen = false">
                             Cerrar
                         </button>
                     </div>
-                    <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
-                    <button
-                        type="button"
-                        class="mt-3 w-full rounded-2xl bg-sky-500 px-4 py-3 text-lg font-semibold text-white shadow-lg shadow-sky-700/30 disabled:opacity-50"
-                        :disabled="!canSubmit"
-                        @click="submitSale"
-                    >
-                        Pagar Ahora <i class="fa-solid fa-arrow-right ml-2"></i>
-                    </button>
                 </div>
 
-                <div class="flex-1 space-y-3 overflow-y-auto px-4 pb-8 pt-3">
+                <div class="flex-1 space-y-3 overflow-y-auto px-4 pb-40 pt-3">
                     <div>
                         <label class="text-xs text-slate-400">Código de venta</label>
                         <input v-model="saleForm.sale_code" type="text" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm" />
@@ -354,34 +362,66 @@
                         </div>
                     </div>
 
-                    <article v-for="(item, index) in cart" :key="`mobile-item-${item.row_key}`" class="rounded-xl border border-slate-700 bg-slate-950/60 p-3">
-                        <div class="flex items-start justify-between">
-                            <div>
-                                <p class="font-semibold">{{ item.name }}</p>
-                                <p class="text-xs text-slate-400">{{ item.presentation_name }}</p>
-                            </div>
-                            <button type="button" class="text-xs text-rose-300" @click="removeItem(index)">Quitar</button>
+                    <section class="rounded-xl border border-sky-800/60 bg-sky-950/20 p-3">
+                        <div class="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-300">
+                            <i class="fa-solid fa-bag-shopping"></i>
+                            <span>Productos agregados</span>
                         </div>
+                        <div class="space-y-2">
+                            <article v-for="(item, index) in cart" :key="`mobile-item-${item.row_key}`" class="rounded-xl border border-sky-900/70 bg-slate-950/70 p-3">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <p class="font-semibold">{{ item.name }}</p>
+                                        <p class="text-xs text-slate-400">{{ item.presentation_name }}</p>
+                                    </div>
+                                    <button type="button" class="text-xs text-rose-300" @click="removeItem(index)">Quitar</button>
+                                </div>
                         <div class="mt-2 grid grid-cols-3 gap-2">
                             <input v-model.number="item.quantity" type="number" min="1" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm" />
                             <input v-model.number="item.price" :disabled="!canChangePrice" type="number" min="0" step="0.01" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm disabled:opacity-60" />
-                            <div class="flex items-center justify-end text-sm font-semibold">Q{{ money(item.quantity * item.price) }}</div>
+                            <div class="flex flex-col items-end justify-center">
+                                <p class="text-[10px] uppercase tracking-wide text-sky-300">Subtotal</p>
+                                <p class="text-sm font-bold text-sky-200">Q{{ money(item.quantity * item.price) }}</p>
+                            </div>
                         </div>
                     </article>
+                            <p v-if="!cart.length" class="rounded-lg border border-dashed border-slate-700 px-3 py-3 text-xs text-slate-400">
+                                No hay productos agregados.
+                            </p>
+                        </div>
+                    </section>
 
-                    <div class="space-y-2 rounded-xl border border-slate-700 bg-slate-950/60 p-3">
-                        <p class="text-xs text-slate-400">Pagos</p>
+                    <section class="space-y-2 rounded-xl border border-amber-700/50 bg-amber-950/20 p-3">
+                        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-300">
+                            <i class="fa-solid fa-credit-card"></i>
+                            <span>Formas de pago</span>
+                        </div>
                         <div v-for="(payment, idx) in saleForm.payments" :key="`mobile-pay-${idx}`" class="grid grid-cols-5 gap-2">
-                            <select v-model="payment.method" class="col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm">
+                            <select v-model="payment.method" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm">
                                 <option value="cash">Efectivo</option>
                                 <option value="card">Tarjeta</option>
                                 <option value="transfer">Transferencia</option>
                             </select>
-                            <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm" />
-                            <button type="button" class="rounded-lg border border-slate-700 text-xs" @click="removePayment(idx)">X</button>
+                            <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
+                            <button type="button" class="rounded-lg border border-amber-800/60 text-xs" @click="removePayment(idx)">X</button>
                         </div>
-                        <button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-xs" @click="addPayment">Agregar método</button>
-                    </div>
+                        <button type="button" class="rounded-lg border border-amber-700/70 px-3 py-2 text-xs text-amber-200" @click="addPayment">Agregar método</button>
+                    </section>
+                </div>
+
+                <div class="border-t border-slate-800 bg-slate-900 px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-3">
+                    <p class="text-xs uppercase tracking-wide text-slate-400">Resumen de venta</p>
+                    <p class="mt-1 text-4xl font-bold leading-none">Q{{ money(total) }}</p>
+                    <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
+                    <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
+                    <button
+                        type="button"
+                        class="mt-3 w-full rounded-2xl bg-sky-500 px-4 py-3 text-lg font-semibold text-white shadow-lg shadow-sky-700/30 disabled:opacity-50"
+                        :disabled="!canSubmit"
+                        @click="submitSale"
+                    >
+                        Pagar Ahora <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
                 </div>
             </div>
         </div>
