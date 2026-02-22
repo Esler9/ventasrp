@@ -149,48 +149,53 @@
                         </div>
                     </div>
 
-                    <div class="flex-1 space-y-3 overflow-y-auto p-4">
-                        <div class="space-y-1">
-                            <label class="text-xs text-slate-400">Código de venta</label>
-                            <input v-model="saleForm.sale_code" type="text" class="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm" />
-                        </div>
-                        <div class="space-y-1">
-                            <div class="flex items-center justify-between">
-                                <label class="text-xs text-slate-400">Cliente</label>
+                    <div class="flex-1 space-y-2 overflow-y-auto p-3">
+                        <section class="rounded-xl border border-slate-700 bg-slate-950/60 p-2.5">
+                            <div class="mb-2 flex items-center justify-between">
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Datos generales</p>
                                 <button
                                     v-if="canCreateClient"
                                     type="button"
-                                    class="rounded-md border border-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:bg-slate-800"
+                                    class="rounded-md border border-slate-700 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-slate-800"
                                     @click="toggleQuickClient"
                                 >
                                     {{ quickClientOpen ? 'Cancelar' : '+ Rápido' }}
                                 </button>
                             </div>
-                            <select v-model="saleForm.customer_id" class="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm">
-                                <option :value="null">Consumidor Final (CF)</option>
-                                <option v-for="client in clientsOptions" :key="client.id" :value="client.id">
-                                    {{ client.name }}{{ client.tax_id ? ` · ${client.tax_id}` : '' }}
-                                </option>
-                            </select>
-                            <div v-if="quickClientOpen && canCreateClient" class="space-y-2 rounded-xl border border-slate-700 bg-slate-950/60 p-3">
+                            <div class="space-y-2">
+                                <div class="grid grid-cols-[6rem_1fr] items-center gap-2">
+                                    <label class="text-[11px] font-medium text-slate-400">Código</label>
+                                    <input v-model="saleForm.sale_code" type="text" class="h-9 rounded-lg border border-slate-700 bg-slate-950/70 px-2.5 text-sm" />
+                                </div>
+                                <div class="grid grid-cols-[6rem_1fr] items-center gap-2">
+                                    <label class="text-[11px] font-medium text-slate-400">Cliente</label>
+                                    <select v-model="saleForm.customer_id" class="h-9 rounded-lg border border-slate-700 bg-slate-950/70 px-2.5 text-sm">
+                                        <option :value="null">Consumidor Final (CF)</option>
+                                        <option v-for="client in clientsOptions" :key="client.id" :value="client.id">
+                                            {{ client.name }}{{ client.tax_id ? ` · ${client.tax_id}` : '' }}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div v-if="quickClientOpen && canCreateClient" class="mt-2 space-y-2 rounded-lg border border-slate-700 bg-slate-950/60 p-2">
                                 <input
                                     v-model="quickClient.name"
                                     type="text"
                                     placeholder="Nombre del cliente"
-                                    class="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"
+                                    class="h-9 w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 text-sm"
                                 />
                                 <div class="grid grid-cols-2 gap-2">
                                     <input
                                         v-model="quickClient.phone"
                                         type="text"
                                         placeholder="Teléfono"
-                                        class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"
+                                        class="h-9 rounded-lg border border-slate-700 bg-slate-900 px-2.5 text-sm"
                                     />
                                     <input
                                         v-model="quickClient.tax_id"
                                         type="text"
                                         placeholder="NIT"
-                                        class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"
+                                        class="h-9 rounded-lg border border-slate-700 bg-slate-900 px-2.5 text-sm"
                                     />
                                 </div>
                                 <p v-if="quickClientError" class="text-xs text-rose-300">{{ quickClientError }}</p>
@@ -203,52 +208,64 @@
                                     {{ quickClientSaving ? 'Guardando...' : 'Guardar cliente rápido' }}
                                 </button>
                             </div>
-                        </div>
+                        </section>
 
-                        <section class="rounded-xl border border-sky-800/60 bg-sky-950/20 p-3">
-                            <div class="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-300">
-                                <i class="fa-solid fa-bag-shopping"></i>
-                                <span>Productos agregados</span>
+                        <section class="rounded-xl border border-sky-800/60 bg-sky-950/20 p-2.5">
+                            <div class="mb-2 flex items-center justify-between">
+                                <div class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-300">
+                                    <i class="fa-solid fa-bag-shopping"></i>
+                                    <span>Productos</span>
+                                </div>
+                                <span class="rounded-md bg-sky-900/50 px-2 py-0.5 text-[10px] font-semibold text-sky-200">{{ itemsCount }}</span>
                             </div>
-                            <div class="space-y-2">
-                                <article v-for="(item, index) in cart" :key="item.row_key" class="rounded-xl border border-sky-900/70 bg-slate-950/70 p-3">
-                                    <div class="flex items-start justify-between">
-                                        <div>
-                                            <p class="font-semibold">{{ item.name }}</p>
-                                            <p class="text-xs text-slate-400">{{ item.presentation_name }}</p>
+                            <div class="space-y-1.5">
+                                <article v-for="(item, index) in cart" :key="item.row_key" class="rounded-lg border border-sky-900/70 bg-slate-950/70 p-2">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="min-w-0">
+                                            <p class="truncate text-[15px] font-semibold leading-tight">{{ item.name }}</p>
+                                            <p class="text-[11px] text-slate-400">{{ item.presentation_name }}</p>
                                         </div>
-                                        <button type="button" class="text-xs text-rose-300" @click="removeItem(index)">Quitar</button>
+                                        <button type="button" class="text-[11px] text-rose-300" @click="removeItem(index)">Quitar</button>
                                     </div>
-                                    <div class="mt-2 grid grid-cols-3 gap-2">
-                                        <input v-model.number="item.quantity" type="number" min="1" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm" />
-                                        <input v-model.number="item.price" :disabled="!canChangePrice" type="number" min="0" step="0.01" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm disabled:opacity-60" />
-                                        <div class="flex flex-col items-end justify-center">
+                                    <div class="mt-1.5 grid grid-cols-3 gap-1.5">
+                                        <div>
+                                            <label class="mb-1 block text-[10px] uppercase tracking-wide text-slate-500">Cant.</label>
+                                            <input v-model.number="item.quantity" type="number" min="1" class="h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-2 text-sm" />
+                                        </div>
+                                        <div>
+                                            <label class="mb-1 block text-[10px] uppercase tracking-wide text-slate-500">Precio</label>
+                                            <input v-model.number="item.price" :disabled="!canChangePrice" type="number" min="0" step="0.01" class="h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-2 text-sm disabled:opacity-60" />
+                                        </div>
+                                        <div class="flex flex-col justify-end">
                                             <p class="text-[10px] uppercase tracking-wide text-sky-300">Subtotal</p>
-                                            <p class="text-sm font-bold text-sky-200">Q{{ money(item.quantity * item.price) }}</p>
+                                            <p class="text-right text-sm font-bold text-sky-200">Q{{ money(item.quantity * item.price) }}</p>
                                         </div>
                                     </div>
                                 </article>
-                                <p v-if="!cart.length" class="rounded-lg border border-dashed border-slate-700 px-3 py-3 text-xs text-slate-400">
+                                <p v-if="!cart.length" class="rounded-lg border border-dashed border-slate-700 px-2.5 py-2 text-xs text-slate-400">
                                     No hay productos agregados.
                                 </p>
                             </div>
                         </section>
 
-                        <section class="space-y-2 rounded-xl border border-amber-700/50 bg-amber-950/20 p-3">
-                            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-300">
-                                <i class="fa-solid fa-credit-card"></i>
-                                <span>Formas de pago</span>
+                        <section class="space-y-1.5 rounded-xl border border-amber-700/50 bg-amber-950/20 p-2.5">
+                            <div class="mb-1 flex items-center justify-between">
+                                <div class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
+                                    <i class="fa-solid fa-credit-card"></i>
+                                    <span>Pagos</span>
+                                </div>
+                                <span class="rounded-md bg-amber-900/40 px-2 py-0.5 text-[10px] font-semibold text-amber-200">{{ saleForm.payments.length }}</span>
                             </div>
-                            <div v-for="(payment, idx) in saleForm.payments" :key="`desk-pay-${idx}`" class="grid grid-cols-5 gap-2">
-                                <select v-model="payment.method" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm">
+                            <div v-for="(payment, idx) in saleForm.payments" :key="`desk-pay-${idx}`" class="grid grid-cols-[1fr_1fr_auto] gap-1.5">
+                                <select v-model="payment.method" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs">
                                     <option value="cash">Efectivo</option>
                                     <option value="card">Tarjeta</option>
                                     <option value="transfer">Transferencia</option>
                                 </select>
-                                <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
-                                <button type="button" class="rounded-lg border border-amber-800/60 text-xs" @click="removePayment(idx)">X</button>
+                                <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-sm" />
+                                <button type="button" class="h-8 rounded-md border border-amber-800/60 px-2 text-xs" @click="removePayment(idx)">X</button>
                             </div>
-                            <button type="button" class="rounded-lg border border-amber-700/70 px-3 py-2 text-xs text-amber-200" @click="addPayment">Agregar método</button>
+                            <button type="button" class="h-8 rounded-md border border-amber-700/70 px-3 text-xs text-amber-200" @click="addPayment">Agregar método</button>
                         </section>
                     </div>
 
