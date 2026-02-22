@@ -88,7 +88,7 @@
                     <section class="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
                         <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
                             <article
-                                v-for="product in products"
+                                v-for="product in filteredProducts"
                                 :key="product.id"
                                 class="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-sm"
                             >
@@ -110,10 +110,6 @@
                                         <i class="fa-solid fa-boxes-stacked mr-1"></i>{{ product.stock }}
                                     </div>
 
-                                    <div v-if="Number(product.stock) <= 0" class="absolute left-2 top-2 rounded-lg bg-rose-500 px-2 py-1 text-[10px] font-semibold text-white">
-                                        <i class="fa-solid fa-ban mr-1"></i>Agotado
-                                    </div>
-
                                     <div v-if="Number(product.stock) <= 5" class="absolute left-2 top-2 rounded-lg bg-amber-400 px-2 py-1 text-[10px] font-semibold text-black">
                                         <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ product.stock }} left
                                     </div>
@@ -133,18 +129,21 @@
                                         <button
                                             type="button"
                                             class="flex h-11 w-11 items-center justify-center rounded-full"
-                                            :class="Number(product.stock) <= 0
+                                            :class="!canAddProduct(product)
                                                 ? 'cursor-not-allowed bg-slate-700/60 text-slate-500'
                                                 : (qtyByProduct[product.id] ? 'bg-sky-500 text-white' : 'bg-sky-500/20 text-sky-300')"
-                                            :disabled="Number(product.stock) <= 0"
+                                            :disabled="!canAddProduct(product)"
                                             @click="addProduct(product)"
                                         >
-                                            <i :class="Number(product.stock) <= 0 ? 'fa-solid fa-ban' : (qtyByProduct[product.id] ? 'fa-solid fa-check' : 'fa-solid fa-plus')"></i>
+                                            <i :class="!canAddProduct(product) ? 'fa-solid fa-ban' : (qtyByProduct[product.id] ? 'fa-solid fa-check' : 'fa-solid fa-plus')"></i>
                                         </button>
                                     </div>
                                 </div>
                             </article>
                         </div>
+                        <p v-if="!filteredProducts.length" class="rounded-xl border border-dashed border-slate-700 px-4 py-6 text-center text-sm text-slate-400">
+                            No hay productos con stock disponible.
+                        </p>
                     </section>
                 </section>
 
@@ -237,7 +236,7 @@
                                     <div class="mt-1.5 grid grid-cols-3 gap-1.5">
                                         <div>
                                             <label class="mb-1 block text-[10px] uppercase tracking-wide text-slate-500">Cant.</label>
-                                            <input v-model.number="item.quantity" type="number" min="1" class="h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-2 text-sm" />
+                                            <input v-model.number="item.quantity" :max="maxQuantityForItem(item)" type="number" min="1" class="h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-2 text-sm" />
                                         </div>
                                         <div>
                                             <label class="mb-1 block text-[10px] uppercase tracking-wide text-slate-500">Precio</label>
@@ -398,7 +397,7 @@
                                     <button type="button" class="text-xs text-rose-300" @click="removeItem(index)">Quitar</button>
                                 </div>
                         <div class="mt-2 grid grid-cols-3 gap-2">
-                            <input v-model.number="item.quantity" type="number" min="1" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm" />
+                            <input v-model.number="item.quantity" :max="maxQuantityForItem(item)" type="number" min="1" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm" />
                             <input v-model.number="item.price" :disabled="!canChangePrice" type="number" min="0" step="0.01" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm disabled:opacity-60" />
                             <div class="flex flex-col items-end justify-center">
                                 <p class="text-[10px] uppercase tracking-wide text-sky-300">Subtotal</p>
@@ -502,6 +501,7 @@ const mobileCheckoutOpen = ref(false);
 const desktopCheckoutCollapsed = ref(false);
 const isDesktop = ref(false);
 const topCategories = computed(() => props.top_categories || []);
+const filteredProducts = computed(() => products.value.filter((product) => Number(product.stock || 0) > 0));
 const clientsOptions = ref([...(props.clients || [])]);
 const quickClientOpen = ref(false);
 const quickClientSaving = ref(false);
@@ -593,13 +593,13 @@ const setCategory = (categoryId) => {
 };
 
 const addProduct = (product) => {
-    if (Number(product.stock) <= 0) {
+    if (!canAddProduct(product)) {
         return;
     }
 
     const existing = cart.value.find((item) => item.product_id === product.id && item.presentation_name === (product.unit_label || 'Unidad'));
     if (existing) {
-        existing.quantity += 1;
+        existing.quantity = Math.min(existing.quantity + 1, Number(product.stock || 0));
         return;
     }
 
@@ -633,11 +633,58 @@ const qtyByProduct = computed(() => {
     return qty;
 });
 
+const productStockMap = computed(() => {
+    const map = {};
+    products.value.forEach((product) => {
+        map[product.id] = Number(product.stock || 0);
+    });
+    return map;
+});
+
+const getProductStock = (productId) => Number(productStockMap.value[productId] || 0);
+
+const maxQuantityForItem = (item) => {
+    const stock = getProductStock(item.product_id);
+    return stock > 0 ? stock : 1;
+};
+
+const canAddProduct = (product) => {
+    const stock = Number(product.stock || 0);
+    const currentQty = Number(qtyByProduct.value[product.id] || 0);
+    return stock > 0 && currentQty < stock;
+};
+
 watch(total, (value) => {
     if (saleForm.payments.length === 1 && saleForm.payments[0].method === 'cash') {
         saleForm.payments[0].amount = Number(value.toFixed(2));
     }
 });
+
+watch(
+    cart,
+    (items) => {
+        for (let index = items.length - 1; index >= 0; index -= 1) {
+            const item = items[index];
+            const stock = getProductStock(item.product_id);
+
+            if (stock <= 0) {
+                items.splice(index, 1);
+                continue;
+            }
+
+            const parsed = Math.floor(Number(item.quantity || 0));
+            if (!Number.isFinite(parsed) || parsed < 1) {
+                item.quantity = 1;
+                continue;
+            }
+
+            if (parsed > stock) {
+                item.quantity = stock;
+            }
+        }
+    },
+    { deep: true },
+);
 
 watch(
     () => saleForm.customer_id,
