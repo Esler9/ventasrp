@@ -144,6 +144,8 @@
                                 <div class="md:col-span-3">
                                     <p class="text-xs text-gray-200">{{ movement.account_label }}</p>
                                     <p v-if="movement.related_account_label" class="text-[11px] text-gray-500">Contra: {{ movement.related_account_label }}</p>
+                                    <p class="mt-1 text-[11px] text-gray-400">{{ movement.description }}</p>
+                                    <p v-if="movement.reference" class="text-[11px] text-gray-500">Ref: {{ movement.reference }}</p>
                                 </div>
                                 <p class="text-sm font-semibold md:col-span-2 md:text-right" :class="movementAmountClass(movement.type)">
                                     {{ movement.type.includes('out') || movement.type === 'withdrawal' ? '-' : '+' }}Q{{ money(movement.amount) }}

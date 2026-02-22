@@ -13,6 +13,7 @@ class SalePayment extends Model
         'user_id',
         'method',
         'bank_account_id',
+        'reference',
         'amount',
     ];
 

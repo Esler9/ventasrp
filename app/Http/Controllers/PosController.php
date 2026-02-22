@@ -157,6 +157,7 @@ class PosController extends Controller
             'payments' => ['nullable', 'array'],
             'payments.*.method' => ['required_with:payments', Rule::in(['cash', 'card', 'transfer'])],
             'payments.*.bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
+            'payments.*.reference' => ['nullable', 'string', 'max:100'],
             'payments.*.amount' => ['required_with:payments', 'numeric', 'min:0.01'],
         ]);
 
@@ -234,11 +235,16 @@ class PosController extends Controller
                     $payments = collect([[
                         'method' => 'cash',
                         'bank_account_id' => null,
+                        'reference' => null,
                         'amount' => $total,
                     ]]);
                 }
 
                 foreach ($payments as $payment) {
+                    if (($payment['method'] ?? null) === 'card' && trim((string) ($payment['reference'] ?? '')) === '') {
+                        throw new \RuntimeException('Ingresa el número de referencia para cada pago con tarjeta.');
+                    }
+
                     if (($payment['method'] ?? null) === 'transfer' && empty($payment['bank_account_id'])) {
                         throw new \RuntimeException('Selecciona la cuenta bancaria para cada pago por transferencia.');
                     }
@@ -326,6 +332,7 @@ class PosController extends Controller
                     $method = (string) $payment['method'];
                     $amount = round((float) $payment['amount'], 2);
                     $bankAccountId = isset($payment['bank_account_id']) ? (int) $payment['bank_account_id'] : null;
+                    $reference = trim((string) ($payment['reference'] ?? '')) ?: null;
 
                     SalePayment::create([
                         'sale_id' => $sale->id,
@@ -333,6 +340,7 @@ class PosController extends Controller
                         'user_id' => $user->id,
                         'method' => $method,
                         'bank_account_id' => $bankAccountId,
+                        'reference' => $reference,
                         'amount' => $amount,
                     ]);
 
@@ -367,7 +375,7 @@ class PosController extends Controller
                             'movement_date' => now()->toDateString(),
                             'type' => 'deposit',
                             'amount' => $amount,
-                            'description' => 'Ingreso por venta ' . $sale->sale_code,
+                            'description' => 'Por venta ' . $sale->sale_code . ' · Cliente ' . ($sale->customer_name ?: 'CF'),
                             'reference' => $sale->sale_code,
                         ]);
                     }
@@ -396,6 +404,7 @@ class PosController extends Controller
                     ])->values(),
                     'payments' => $payments->map(fn (array $payment) => [
                         'method' => $this->paymentMethodLabel((string) $payment['method']),
+                        'reference' => trim((string) ($payment['reference'] ?? '')) ?: null,
                         'amount' => round((float) $payment['amount'], 2),
                     ])->values(),
                 ];

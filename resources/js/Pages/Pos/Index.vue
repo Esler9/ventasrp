@@ -272,6 +272,13 @@
                                     <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-sm" />
                                     <button type="button" class="h-8 rounded-md border border-amber-800/60 px-2 text-xs" @click="removePayment(idx)">X</button>
                                 </div>
+                                <input
+                                    v-model.trim="payment.reference"
+                                    type="text"
+                                    maxlength="100"
+                                    :placeholder="payment.method === 'card' ? 'Referencia de tarjeta (obligatoria)' : 'Referencia (opcional)'"
+                                    class="h-8 w-full rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs"
+                                />
                                 <select
                                     v-if="payment.method === 'transfer'"
                                     v-model="payment.bank_account_id"
@@ -292,6 +299,7 @@
                     <p class="mt-1 text-5xl font-bold leading-none">Q{{ money(total) }}</p>
                     <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
                     <p v-if="hasTransferWithoutAccount" class="mt-1 text-xs text-amber-300">Selecciona cuenta bancaria para cada transferencia.</p>
+                    <p v-if="hasCardWithoutReference" class="mt-1 text-xs text-amber-300">Ingresa referencia en cada pago con tarjeta.</p>
                     <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
                         <button
                             type="button"
@@ -439,6 +447,13 @@
                                 <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
                                 <button type="button" class="rounded-lg border border-amber-800/60 text-xs" @click="removePayment(idx)">X</button>
                             </div>
+                            <input
+                                v-model.trim="payment.reference"
+                                type="text"
+                                maxlength="100"
+                                :placeholder="payment.method === 'card' ? 'Referencia de tarjeta (obligatoria)' : 'Referencia (opcional)'"
+                                class="w-full rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm"
+                            />
                             <select
                                 v-if="payment.method === 'transfer'"
                                 v-model="payment.bank_account_id"
@@ -459,6 +474,7 @@
                     <p class="mt-1 text-4xl font-bold leading-none">Q{{ money(total) }}</p>
                     <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
                     <p v-if="hasTransferWithoutAccount" class="mt-1 text-xs text-amber-300">Selecciona cuenta bancaria para cada transferencia.</p>
+                    <p v-if="hasCardWithoutReference" class="mt-1 text-xs text-amber-300">Ingresa referencia en cada pago con tarjeta.</p>
                     <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
                     <button
                         type="button"
@@ -577,7 +593,7 @@ const saleForm = useForm({
     customer_id: props.defaults.customer_id || null,
     customer_name: props.defaults.customer_name || 'CF',
     items: [],
-    payments: [{ method: 'cash', bank_account_id: null, amount: 0 }],
+    payments: [{ method: 'cash', bank_account_id: null, reference: '', amount: 0 }],
 });
 
 const displaySaleCode = computed(() => saleForm.sale_code || '---');
@@ -694,6 +710,9 @@ const paymentsMatch = computed(() => Math.abs(paymentsTotal.value - total.value)
 const hasTransferWithoutAccount = computed(() =>
     saleForm.payments.some((payment) => payment.method === 'transfer' && !payment.bank_account_id),
 );
+const hasCardWithoutReference = computed(() =>
+    saleForm.payments.some((payment) => payment.method === 'card' && !String(payment.reference || '').trim()),
+);
 
 const qtyByProduct = computed(() => {
     const qty = {};
@@ -736,6 +755,9 @@ watch(
         payments.forEach((payment) => {
             if (!Object.prototype.hasOwnProperty.call(payment, 'bank_account_id')) {
                 payment.bank_account_id = null;
+            }
+            if (!Object.prototype.hasOwnProperty.call(payment, 'reference')) {
+                payment.reference = '';
             }
 
             if (payment.method === 'transfer') {
@@ -793,7 +815,7 @@ watch(
 );
 
 const addPayment = () => {
-    saleForm.payments.push({ method: 'cash', bank_account_id: null, amount: 0 });
+    saleForm.payments.push({ method: 'cash', bank_account_id: null, reference: '', amount: 0 });
 };
 
 const removePayment = (index) => {
@@ -806,6 +828,7 @@ const canSubmit = computed(() =>
     && cart.value.length > 0
     && paymentsMatch.value
     && !hasTransferWithoutAccount.value
+    && !hasCardWithoutReference.value
     && !saleForm.processing,
 );
 
@@ -824,7 +847,7 @@ const submitSale = () => {
         preserveScroll: true,
         onSuccess: () => {
             cart.value = [];
-            saleForm.payments = [{ method: 'cash', bank_account_id: null, amount: 0 }];
+            saleForm.payments = [{ method: 'cash', bank_account_id: null, reference: '', amount: 0 }];
             saleForm.sale_code = '';
             saleForm.customer_id = null;
             saleForm.customer_name = 'CF';
@@ -944,7 +967,10 @@ const printSaleTicket = () => {
     const paymentsHtml = (ticket.payments || [])
         .map((payment) => `
             <tr>
-                <td style="padding:3px 0;">${escapeHtml(payment.method)}</td>
+                <td style="padding:3px 0;">
+                    ${escapeHtml(payment.method)}
+                    ${payment.reference ? `<br><span style="font-size:11px;color:#4b5563;">Ref: ${escapeHtml(payment.reference)}</span>` : ''}
+                </td>
                 <td style="padding:3px 0;text-align:right;">Q${money(payment.amount)}</td>
             </tr>
         `)
