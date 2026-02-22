@@ -149,6 +149,7 @@ class PosController extends Controller
         $user = $request->user();
 
         $session = CashSession::query()
+            ->with('register:id,name,branch_name')
             ->where('user_id', $user->id)
             ->where('status', 'open')
             ->latest('opened_at')
@@ -160,8 +161,10 @@ class PosController extends Controller
             ]);
         }
 
+        $saleTicket = null;
+
         try {
-            DB::transaction(function () use ($data, $user, $session): void {
+            DB::transaction(function () use ($data, $user, $session, &$saleTicket): void {
                 $items = collect($data['items']);
                 $productIds = $items->pluck('product_id')->unique()->values();
 
@@ -302,12 +305,48 @@ class PosController extends Controller
                     'title' => 'Venta registrada',
                     'description' => "Código {$sale->sale_code} · Cliente {$sale->customer_name} · Total Q" . number_format((float) $sale->total, 2),
                 ]);
+
+                $saleTicket = [
+                    'sale_code' => $sale->sale_code,
+                    'created_at' => optional($sale->created_at)->format('Y-m-d H:i:s'),
+                    'customer_name' => $sale->customer_name ?: 'CF',
+                    'cashier_name' => $user->name,
+                    'branch_name' => $session->register?->branch_name ?? 'Sucursal',
+                    'register_name' => $session->register?->name ?? 'Caja',
+                    'items_count' => (int) $sale->items_count,
+                    'total' => round((float) $sale->total, 2),
+                    'items' => collect($normalizedItems)->map(fn (array $item) => [
+                        'name' => $item['product']->name,
+                        'presentation_name' => $item['presentation_name'],
+                        'quantity' => (int) $item['presentation_quantity'],
+                        'price' => round((float) $item['presentation_price'], 2),
+                        'line_total' => round((float) $item['presentation_price'] * (int) $item['presentation_quantity'], 2),
+                    ])->values(),
+                    'payments' => $payments->map(fn (array $payment) => [
+                        'method' => $this->paymentMethodLabel((string) $payment['method']),
+                        'amount' => round((float) $payment['amount'], 2),
+                    ])->values(),
+                ];
             });
         } catch (\Throwable $e) {
             return back()->withErrors(['sale' => $e->getMessage()]);
         }
 
+        if (is_array($saleTicket)) {
+            session()->flash('sale_ticket', $saleTicket);
+        }
+
         return back();
+    }
+
+    private function paymentMethodLabel(string $method): string
+    {
+        return match ($method) {
+            'cash' => 'Efectivo',
+            'card' => 'Tarjeta',
+            'transfer' => 'Transferencia',
+            default => ucfirst($method),
+        };
     }
 
     private function generateSaleCode(): string

@@ -446,6 +446,34 @@
             </div>
         </div>
 
+        <div v-if="saleSuccessModalOpen && saleTicketData" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/65 p-4" role="dialog" aria-modal="true">
+            <div class="w-full max-w-md rounded-2xl border border-emerald-700/50 bg-slate-900 p-4 shadow-2xl">
+                <div class="mb-3 flex items-start gap-3">
+                    <div class="mt-0.5 grid h-9 w-9 place-items-center rounded-full bg-emerald-500/20 text-emerald-300">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-base font-semibold text-emerald-200">Venta realizada correctamente</p>
+                        <p class="text-xs text-slate-300">Código: {{ saleTicketData.sale_code }} · Total: Q{{ money(saleTicketData.total) }}</p>
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-xs text-slate-300">
+                    <p><span class="text-slate-400">Cliente:</span> {{ saleTicketData.customer_name }}</p>
+                    <p class="mt-1"><span class="text-slate-400">Caja:</span> {{ saleTicketData.register_name }} · {{ saleTicketData.branch_name }}</p>
+                </div>
+
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <button type="button" class="rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800" @click="closeSaleSuccessModal">
+                        Cerrar
+                    </button>
+                    <button type="button" class="rounded-xl bg-sky-500 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-400" @click="printSaleTicket">
+                        Imprimir ticket
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div
             v-if="previewPhotoUrl"
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
@@ -513,6 +541,8 @@ const quickClient = ref({
 });
 const previewPhotoUrl = ref(null);
 const previewPhotoName = ref('');
+const saleSuccessModalOpen = ref(false);
+const saleTicketData = ref(null);
 
 const saleForm = useForm({
     sale_code: props.defaults.sale_code || '',
@@ -558,6 +588,15 @@ watch(
     () => props.selected_category_id,
     (value) => {
         selectedCategoryId.value = value > 0 ? value : null;
+    },
+);
+
+watch(
+    () => page.props.flash?.sale_ticket,
+    (ticket) => {
+        if (!ticket) return;
+        saleTicketData.value = ticket;
+        saleSuccessModalOpen.value = true;
     },
 );
 
@@ -812,6 +851,92 @@ const logoutForm = useForm({});
 const logout = () => logoutForm.post('/logout');
 
 const money = (value) => Number(value || 0).toFixed(2);
+
+const escapeHtml = (value) => String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+const closeSaleSuccessModal = () => {
+    saleSuccessModalOpen.value = false;
+};
+
+const printSaleTicket = () => {
+    if (!saleTicketData.value) {
+        return;
+    }
+
+    const ticket = saleTicketData.value;
+    const ticketWindow = window.open('', '_blank', 'width=420,height=720');
+    if (!ticketWindow) {
+        return;
+    }
+
+    const itemsHtml = (ticket.items || [])
+        .map((item) => `
+            <tr>
+                <td style="padding:4px 0;">${escapeHtml(item.name)}<br><span style="font-size:11px;color:#4b5563;">${escapeHtml(item.presentation_name)} x${item.quantity}</span></td>
+                <td style="padding:4px 0;text-align:right;">Q${money(item.line_total)}</td>
+            </tr>
+        `)
+        .join('');
+
+    const paymentsHtml = (ticket.payments || [])
+        .map((payment) => `
+            <tr>
+                <td style="padding:3px 0;">${escapeHtml(payment.method)}</td>
+                <td style="padding:3px 0;text-align:right;">Q${money(payment.amount)}</td>
+            </tr>
+        `)
+        .join('');
+
+    ticketWindow.document.write(`
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="utf-8" />
+            <title>Ticket ${escapeHtml(ticket.sale_code)}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 10px; color: #111827; }
+                .center { text-align: center; }
+                .title { font-size: 16px; font-weight: 700; }
+                .small { font-size: 12px; color: #374151; }
+                table { width: 100%; border-collapse: collapse; font-size: 13px; }
+                .divider { border-top: 1px dashed #6b7280; margin: 8px 0; }
+                @media print { body { margin: 0; } }
+            </style>
+        </head>
+        <body>
+            <div class="center">
+                <div class="title">${escapeHtml(ticket.branch_name || 'Ticket de venta')}</div>
+                <div class="small">${escapeHtml(ticket.register_name || '')}</div>
+                <div class="small">${escapeHtml(ticket.created_at || '')}</div>
+            </div>
+            <div class="divider"></div>
+            <div class="small">Venta: ${escapeHtml(ticket.sale_code)}</div>
+            <div class="small">Cliente: ${escapeHtml(ticket.customer_name)}</div>
+            <div class="small">Cajero: ${escapeHtml(ticket.cashier_name)}</div>
+            <div class="divider"></div>
+            <table>${itemsHtml}</table>
+            <div class="divider"></div>
+            <table>${paymentsHtml}</table>
+            <div class="divider"></div>
+            <table>
+                <tr><td style="font-weight:700;">TOTAL</td><td style="text-align:right;font-weight:700;">Q${money(ticket.total)}</td></tr>
+            </table>
+            <p class="center small" style="margin-top:10px;">Gracias por su compra</p>
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+    ticketWindow.document.close();
+};
 
 const openPhoto = (product) => {
     previewPhotoUrl.value = product.photo_url || null;
