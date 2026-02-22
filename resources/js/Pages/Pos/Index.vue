@@ -43,7 +43,7 @@
                 </button>
             </div>
 
-            <div class="grid gap-4" :class="desktopCheckoutCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[minmax(0,1fr)_26rem]'">
+            <div class="grid gap-4 lg:items-start" :class="desktopCheckoutCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[minmax(0,1fr)_26rem]'">
                 <section class="space-y-4">
                     <div v-if="!openCashSession" class="rounded-xl border border-rose-700/60 bg-rose-900/20 p-3 text-sm text-rose-200">
                         Debes abrir caja antes de vender.
@@ -144,7 +144,7 @@
                     </section>
                 </section>
 
-                <aside v-if="!desktopCheckoutCollapsed" class="hidden lg:flex lg:h-[calc(100vh-7.5rem)] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-800 lg:bg-slate-900/95">
+                <aside v-if="!desktopCheckoutCollapsed" class="hidden lg:sticky lg:top-24 lg:flex lg:h-[calc(100vh-7.5rem)] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-800 lg:bg-slate-900/95">
                     <div class="border-b border-slate-800 p-4">
                         <div class="mb-2 flex items-center justify-between">
                             <p class="text-xs uppercase tracking-wide text-slate-400">Total ({{ itemsCount }} items)</p>
@@ -264,9 +264,10 @@
                         <button
                             type="button"
                             class="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-700/30"
+                            :disabled="cart.length === 0"
                             @click="mobileCheckoutOpen = true"
                         >
-                            Ver venta
+                            Pagar Ahora
                         </button>
                     </div>
                 </section>
@@ -534,9 +535,6 @@ const addProduct = (product) => {
     const existing = cart.value.find((item) => item.product_id === product.id && item.presentation_name === (product.unit_label || 'Unidad'));
     if (existing) {
         existing.quantity += 1;
-        if (!isDesktop.value) {
-            mobileCheckoutOpen.value = true;
-        }
         return;
     }
 
@@ -551,9 +549,6 @@ const addProduct = (product) => {
         price: Number(product.price || 0),
         note: '',
     });
-    if (!isDesktop.value) {
-        mobileCheckoutOpen.value = true;
-    }
 };
 
 const removeItem = (index) => {
