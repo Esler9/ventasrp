@@ -12,6 +12,7 @@ class SalePayment extends Model
         'cash_session_id',
         'user_id',
         'method',
+        'bank_account_id',
         'amount',
     ];
 
@@ -32,5 +33,10 @@ class SalePayment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(BankAccount::class);
     }
 }

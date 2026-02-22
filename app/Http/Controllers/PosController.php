@@ -7,6 +7,7 @@ use App\Models\CashMovement;
 use App\Models\CashSession;
 use App\Models\Client;
 use App\Models\InventoryMovement;
+use App\Models\BankAccount;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SalePayment;
@@ -96,6 +97,12 @@ class PosController extends Controller
             ->limit(100)
             ->get(['id', 'name', 'phone', 'tax_id']);
 
+        $bankAccounts = BankAccount::query()
+            ->where('is_active', true)
+            ->orderBy('bank_name')
+            ->orderBy('account_name')
+            ->get(['id', 'bank_name', 'account_name', 'currency']);
+
         return Inertia::render('Pos/Index', [
             'products' => $products,
             'filters' => [
@@ -111,6 +118,11 @@ class PosController extends Controller
                 'name' => $client->name,
                 'phone' => $client->phone,
                 'tax_id' => $client->tax_id,
+            ])->values(),
+            'bank_accounts' => $bankAccounts->map(fn (BankAccount $account) => [
+                'id' => $account->id,
+                'label' => trim($account->bank_name . ' · ' . $account->account_name),
+                'currency' => $account->currency,
             ])->values(),
             'defaults' => [
                 'customer_id' => null,
@@ -143,6 +155,7 @@ class PosController extends Controller
             'items.*.note' => ['nullable', 'string'],
             'payments' => ['nullable', 'array'],
             'payments.*.method' => ['required_with:payments', Rule::in(['cash', 'card', 'transfer'])],
+            'payments.*.bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
             'payments.*.amount' => ['required_with:payments', 'numeric', 'min:0.01'],
         ]);
 
@@ -219,8 +232,38 @@ class PosController extends Controller
                 if ($payments->isEmpty()) {
                     $payments = collect([[
                         'method' => 'cash',
+                        'bank_account_id' => null,
                         'amount' => $total,
                     ]]);
+                }
+
+                foreach ($payments as $payment) {
+                    if (($payment['method'] ?? null) === 'transfer' && empty($payment['bank_account_id'])) {
+                        throw new \RuntimeException('Selecciona la cuenta bancaria para cada pago por transferencia.');
+                    }
+                }
+
+                $transferAccountIds = $payments
+                    ->filter(fn (array $payment) => ($payment['method'] ?? null) === 'transfer')
+                    ->pluck('bank_account_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+
+                if ($transferAccountIds->isNotEmpty()) {
+                    $activeTransferAccounts = BankAccount::query()
+                        ->whereIn('id', $transferAccountIds)
+                        ->where('is_active', true)
+                        ->pluck('id')
+                        ->map(fn ($id) => (int) $id)
+                        ->all();
+
+                    foreach ($transferAccountIds as $accountId) {
+                        if (! in_array($accountId, $activeTransferAccounts, true)) {
+                            throw new \RuntimeException('Una de las cuentas bancarias seleccionadas no está activa.');
+                        }
+                    }
                 }
 
                 $paidTotal = round((float) $payments->sum(fn (array $payment) => (float) $payment['amount']), 2);
@@ -285,6 +328,7 @@ class PosController extends Controller
                         'cash_session_id' => $session->id,
                         'user_id' => $user->id,
                         'method' => $method,
+                        'bank_account_id' => isset($payment['bank_account_id']) ? (int) $payment['bank_account_id'] : null,
                         'amount' => $amount,
                     ]);
 

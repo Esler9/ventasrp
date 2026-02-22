@@ -262,14 +262,26 @@
                                 </div>
                                 <span class="rounded-md bg-amber-900/40 px-2 py-0.5 text-[10px] font-semibold text-amber-200">{{ saleForm.payments.length }}</span>
                             </div>
-                            <div v-for="(payment, idx) in saleForm.payments" :key="`desk-pay-${idx}`" class="grid grid-cols-[1fr_1fr_auto] gap-1.5">
-                                <select v-model="payment.method" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs">
-                                    <option value="cash">Efectivo</option>
-                                    <option value="card">Tarjeta</option>
-                                    <option value="transfer">Transferencia</option>
+                            <div v-for="(payment, idx) in saleForm.payments" :key="`desk-pay-${idx}`" class="space-y-1.5">
+                                <div class="grid grid-cols-[1fr_1fr_auto] gap-1.5">
+                                    <select v-model="payment.method" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs">
+                                        <option value="cash">Efectivo</option>
+                                        <option value="card">Tarjeta</option>
+                                        <option value="transfer">Transferencia</option>
+                                    </select>
+                                    <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-sm" />
+                                    <button type="button" class="h-8 rounded-md border border-amber-800/60 px-2 text-xs" @click="removePayment(idx)">X</button>
+                                </div>
+                                <select
+                                    v-if="payment.method === 'transfer'"
+                                    v-model="payment.bank_account_id"
+                                    class="h-8 w-full rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs"
+                                >
+                                    <option :value="null" disabled>Selecciona cuenta bancaria</option>
+                                    <option v-for="account in bankAccounts" :key="`desk-bank-${account.id}`" :value="account.id">
+                                        {{ account.label }} ({{ account.currency }})
+                                    </option>
                                 </select>
-                                <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-sm" />
-                                <button type="button" class="h-8 rounded-md border border-amber-800/60 px-2 text-xs" @click="removePayment(idx)">X</button>
                             </div>
                             <button type="button" class="h-8 rounded-md border border-amber-700/70 px-3 text-xs text-amber-200" @click="addPayment">Agregar método</button>
                         </section>
@@ -416,14 +428,26 @@
                             <i class="fa-solid fa-credit-card"></i>
                             <span>Formas de pago</span>
                         </div>
-                        <div v-for="(payment, idx) in saleForm.payments" :key="`mobile-pay-${idx}`" class="grid grid-cols-5 gap-2">
-                            <select v-model="payment.method" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm">
-                                <option value="cash">Efectivo</option>
-                                <option value="card">Tarjeta</option>
-                                <option value="transfer">Transferencia</option>
+                        <div v-for="(payment, idx) in saleForm.payments" :key="`mobile-pay-${idx}`" class="space-y-2">
+                            <div class="grid grid-cols-5 gap-2">
+                                <select v-model="payment.method" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm">
+                                    <option value="cash">Efectivo</option>
+                                    <option value="card">Tarjeta</option>
+                                    <option value="transfer">Transferencia</option>
+                                </select>
+                                <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
+                                <button type="button" class="rounded-lg border border-amber-800/60 text-xs" @click="removePayment(idx)">X</button>
+                            </div>
+                            <select
+                                v-if="payment.method === 'transfer'"
+                                v-model="payment.bank_account_id"
+                                class="w-full rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm"
+                            >
+                                <option :value="null" disabled>Selecciona cuenta bancaria</option>
+                                <option v-for="account in bankAccounts" :key="`mobile-bank-${account.id}`" :value="account.id">
+                                    {{ account.label }} ({{ account.currency }})
+                                </option>
                             </select>
-                            <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
-                            <button type="button" class="rounded-lg border border-amber-800/60 text-xs" @click="removePayment(idx)">X</button>
                         </div>
                         <button type="button" class="rounded-lg border border-amber-700/70 px-3 py-2 text-xs text-amber-200" @click="addPayment">Agregar método</button>
                     </section>
@@ -515,6 +539,7 @@ const props = defineProps({
     top_categories: { type: Array, default: () => [] },
     selected_category_id: { type: Number, default: 0 },
     clients: { type: Array, default: () => [] },
+    bank_accounts: { type: Array, default: () => [] },
     defaults: { type: Object, default: () => ({ sale_code: '', customer_id: null, customer_name: 'CF' }) },
     open_cash_session: { type: Object, default: null },
 });
@@ -531,6 +556,7 @@ const isDesktop = ref(false);
 const topCategories = computed(() => props.top_categories || []);
 const filteredProducts = computed(() => products.value.filter((product) => Number(product.stock || 0) > 0));
 const clientsOptions = ref([...(props.clients || [])]);
+const bankAccounts = computed(() => props.bank_accounts || []);
 const quickClientOpen = ref(false);
 const quickClientSaving = ref(false);
 const quickClientError = ref('');
@@ -549,7 +575,7 @@ const saleForm = useForm({
     customer_id: props.defaults.customer_id || null,
     customer_name: props.defaults.customer_name || 'CF',
     items: [],
-    payments: [{ method: 'cash', amount: 0 }],
+    payments: [{ method: 'cash', bank_account_id: null, amount: 0 }],
 });
 
 const displaySaleCode = computed(() => saleForm.sale_code || '---');
@@ -700,6 +726,27 @@ watch(total, (value) => {
 });
 
 watch(
+    () => saleForm.payments,
+    (payments) => {
+        payments.forEach((payment) => {
+            if (!Object.prototype.hasOwnProperty.call(payment, 'bank_account_id')) {
+                payment.bank_account_id = null;
+            }
+
+            if (payment.method === 'transfer') {
+                if (!payment.bank_account_id && bankAccounts.value.length > 0) {
+                    payment.bank_account_id = bankAccounts.value[0].id;
+                }
+                return;
+            }
+
+            payment.bank_account_id = null;
+        });
+    },
+    { deep: true },
+);
+
+watch(
     cart,
     (items) => {
         for (let index = items.length - 1; index >= 0; index -= 1) {
@@ -741,7 +788,7 @@ watch(
 );
 
 const addPayment = () => {
-    saleForm.payments.push({ method: 'cash', amount: 0 });
+    saleForm.payments.push({ method: 'cash', bank_account_id: null, amount: 0 });
 };
 
 const removePayment = (index) => {
@@ -766,7 +813,7 @@ const submitSale = () => {
         preserveScroll: true,
         onSuccess: () => {
             cart.value = [];
-            saleForm.payments = [{ method: 'cash', amount: 0 }];
+            saleForm.payments = [{ method: 'cash', bank_account_id: null, amount: 0 }];
             saleForm.sale_code = '';
             saleForm.customer_id = null;
             saleForm.customer_name = 'CF';
