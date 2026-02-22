@@ -263,22 +263,16 @@
                                 <span class="rounded-md bg-amber-900/40 px-2 py-0.5 text-[10px] font-semibold text-amber-200">{{ saleForm.payments.length }}</span>
                             </div>
                             <div v-for="(payment, idx) in saleForm.payments" :key="`desk-pay-${idx}`" class="space-y-1.5">
-                                <div class="grid grid-cols-[1fr_1fr_auto] gap-1.5">
+                                <div class="grid grid-cols-[minmax(7rem,1fr)_minmax(5rem,0.65fr)_minmax(8rem,1fr)_2.5rem] gap-1.5">
                                     <select v-model="payment.method" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs">
                                         <option value="cash">Efectivo</option>
                                         <option value="card">Tarjeta</option>
                                         <option value="transfer" :disabled="bankAccounts.length === 0">Transferencia</option>
                                     </select>
                                     <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-sm" />
+                                    <input v-model.trim="payment.reference" type="text" maxlength="100" :placeholder="payment.method === 'card' ? 'Ref tarjeta *' : 'Referencia'" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs" />
                                     <button type="button" class="h-8 rounded-md border border-amber-800/60 px-2 text-xs" @click="removePayment(idx)">X</button>
                                 </div>
-                                <input
-                                    v-model.trim="payment.reference"
-                                    type="text"
-                                    maxlength="100"
-                                    :placeholder="payment.method === 'card' ? 'Referencia de tarjeta (obligatoria)' : 'Referencia (opcional)'"
-                                    class="h-8 w-full rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs"
-                                />
                                 <select
                                     v-if="payment.method === 'transfer'"
                                     v-model="payment.bank_account_id"
@@ -438,22 +432,16 @@
                             <span>Formas de pago</span>
                         </div>
                         <div v-for="(payment, idx) in saleForm.payments" :key="`mobile-pay-${idx}`" class="space-y-2">
-                            <div class="grid grid-cols-5 gap-2">
+                            <div class="grid grid-cols-6 gap-2">
                                 <select v-model="payment.method" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm">
                                     <option value="cash">Efectivo</option>
                                     <option value="card">Tarjeta</option>
                                     <option value="transfer" :disabled="bankAccounts.length === 0">Transferencia</option>
                                 </select>
                                 <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
-                                <button type="button" class="rounded-lg border border-amber-800/60 text-xs" @click="removePayment(idx)">X</button>
+                                <button type="button" class="col-span-1 rounded-lg border border-amber-800/60 text-xs" @click="removePayment(idx)">X</button>
+                                <input v-model.trim="payment.reference" type="text" maxlength="100" :placeholder="payment.method === 'card' ? 'Ref tarjeta *' : 'Referencia'" class="col-span-6 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
                             </div>
-                            <input
-                                v-model.trim="payment.reference"
-                                type="text"
-                                maxlength="100"
-                                :placeholder="payment.method === 'card' ? 'Referencia de tarjeta (obligatoria)' : 'Referencia (opcional)'"
-                                class="w-full rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm"
-                            />
                             <select
                                 v-if="payment.method === 'transfer'"
                                 v-model="payment.bank_account_id"

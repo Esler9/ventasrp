@@ -1,13 +1,13 @@
 <template>
     <div class="min-h-screen bg-slate-950 text-slate-100">
         <GlobalLoader />
-        <div class="mx-auto w-full max-w-md px-4 pt-3 lg:max-w-7xl lg:px-6">
+        <div class="mx-auto w-full max-w-7xl px-4 pt-3 sm:px-5 lg:px-6">
             <FlashBanner />
         </div>
 
-        <main class="mx-auto w-full max-w-md px-4 pb-28 pt-2 lg:max-w-7xl lg:px-6" :style="contentSafeArea">
-            <section class="rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950 via-[#0a1a2d] to-[#081626] p-4 shadow-2xl shadow-black/30 lg:p-6">
-                <header class="mb-5 flex items-center justify-between border-b border-slate-800/70 pb-4 lg:mb-6 lg:pb-5">
+        <main class="mx-auto w-full max-w-7xl px-4 pb-24 pt-2 sm:px-5 md:pb-28 lg:px-6 lg:pb-8" :style="contentSafeArea">
+            <section class="rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950 via-[#0a1a2d] to-[#081626] p-4 shadow-2xl shadow-black/30 sm:p-5 lg:p-6">
+                <header class="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/70 pb-4 lg:mb-6 lg:pb-5">
                     <div class="flex items-center gap-3">
                         <div class="grid h-10 w-10 place-items-center rounded-full bg-sky-500/20 text-sky-300 lg:h-12 lg:w-12">
                             <i class="fa-solid fa-store text-sm"></i>
@@ -28,7 +28,7 @@
 
                 <section>
                     <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.13em] text-slate-400">Resumen financiero</h2>
-                    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
                         <article class="rounded-xl border border-sky-400/30 bg-gradient-to-br from-sky-700 to-sky-500 p-3 lg:p-4">
                             <p class="text-xs text-sky-100/90">Ventas hoy</p>
                             <p class="mt-1 text-3xl font-extrabold leading-none lg:text-[2rem]">{{ currencySymbol }}{{ money(financialSummary.sales_today) }}</p>
@@ -66,10 +66,10 @@
                     </div>
                 </section>
 
-                <div class="mt-6 grid gap-5 lg:grid-cols-[1fr_minmax(20rem,24rem)] lg:items-start">
+                <div class="mt-6 grid gap-5 md:gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(21rem,24rem)] xl:items-start">
                     <section>
                         <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.13em] text-slate-400">Acciones rápidas</h2>
-                        <div class="space-y-2">
+                        <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                             <Link
                                 v-for="action in quickActions"
                                 :key="action.key"
@@ -88,12 +88,12 @@
                         </div>
                     </section>
 
-                    <section class="lg:sticky lg:top-24">
+                    <section class="xl:sticky xl:top-24">
                         <div class="mb-3 flex items-center justify-between">
                             <h2 class="text-xs font-semibold uppercase tracking-[0.13em] text-slate-400">Actividad reciente</h2>
                             <Link href="/admin/sales" class="text-xs font-semibold text-sky-400">Ver todo</Link>
                         </div>
-                        <div class="rounded-xl border border-slate-700 bg-slate-800/70 px-3 lg:max-h-[28rem] lg:overflow-y-auto">
+                        <div class="rounded-xl border border-slate-700 bg-slate-800/70 px-3 xl:max-h-[28rem] xl:overflow-y-auto">
                             <article
                                 v-for="(activity, index) in recentActivity"
                                 :key="activity.id"
@@ -123,7 +123,7 @@
 
         <Link
             href="/pos"
-            class="fixed bottom-28 right-6 z-40 grid h-12 w-12 place-items-center rounded-full bg-sky-500 text-white shadow-lg shadow-sky-700/40 transition hover:bg-sky-400 lg:bottom-8 lg:right-8"
+            class="fixed bottom-28 right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-sky-500 text-white shadow-lg shadow-sky-700/40 transition hover:bg-sky-400 sm:right-6 lg:bottom-8 lg:right-8"
         >
             <i class="fa-solid fa-plus text-lg"></i>
         </Link>
@@ -133,7 +133,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import BottomNav from '../../Components/BottomNav.vue';
 import FlashBanner from '../../Components/FlashBanner.vue';
@@ -180,6 +180,7 @@ const financialSummary = computed(() => props.financial_summary);
 const quickActions = computed(() => props.quick_actions);
 const recentActivity = computed(() => props.recent_activity);
 const currencySymbol = computed(() => props.currency?.symbol || 'Q');
+const isDesktop = ref(false);
 
 const money = (value) => {
     const number = Number(value || 0);
@@ -224,7 +225,22 @@ const relativeTime = (isoDate) => {
     return `Hace ${diffDays} d`;
 };
 
+const syncViewport = () => {
+    isDesktop.value = window.innerWidth >= 1024;
+};
+
+onMounted(() => {
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', syncViewport);
+});
+
 const contentSafeArea = computed(() => ({
-    paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))',
+    paddingBottom: isDesktop.value
+        ? 'calc(1.5rem + env(safe-area-inset-bottom, 0px))'
+        : 'calc(7rem + env(safe-area-inset-bottom, 0px))',
 }));
 </script>
