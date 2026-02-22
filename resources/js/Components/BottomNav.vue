@@ -146,10 +146,10 @@ const moreItems = computed(() => [
     {
         key: 'expenses',
         label: 'Gastos',
-        href: null,
-        enabled: can('expenses.view') && false,
-        disabledReason: can('expenses.view') ? 'Disponible en la siguiente fase.' : 'Sin permiso para Gastos.',
-        disabledTag: can('expenses.view') ? 'Próximamente' : 'Sin permiso',
+        href: '/admin/expenses',
+        enabled: can('expenses.view'),
+        disabledReason: 'Sin permiso para Gastos.',
+        disabledTag: 'Sin permiso',
     },
     {
         key: 'banks',

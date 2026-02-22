@@ -117,10 +117,10 @@ class DashboardController extends Controller
                 'key' => 'expense',
                 'title' => 'Registrar Gasto',
                 'subtitle' => 'Capturar recibo o pago a proveedor',
-                'href' => '/admin/cash',
+                'href' => '/admin/expenses',
                 'icon' => 'fa-solid fa-receipt',
                 'icon_bg' => 'bg-amber-500/20 text-amber-300',
-                'enabled' => $can('cash.view') || $can('cash.movements'),
+                'enabled' => $can('expenses.view') || $can('expenses.create'),
             ],
             [
                 'key' => 'stock',
