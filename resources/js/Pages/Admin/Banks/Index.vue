@@ -91,6 +91,58 @@
                             </article>
                         </div>
                     </div>
+
+                    <div class="border-t border-gray-800 pt-4">
+                        <h3 class="text-sm font-semibold text-gray-200">{{ posForm.id ? 'Editar POS bancario' : 'Asignar POS bancario' }}</h3>
+                        <form class="mt-3 space-y-2" @submit.prevent="submitPosTerminal">
+                            <select v-model="posForm.bank_account_id" required class="w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2.5 text-sm text-gray-100">
+                                <option :value="null" disabled>Cuenta bancaria</option>
+                                <option v-for="account in activeAccounts" :key="`pos-account-${account.id}`" :value="account.id">
+                                    {{ account.bank_name }} · {{ account.account_name }}
+                                </option>
+                            </select>
+                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <input v-model="posForm.name" type="text" required placeholder="Nombre POS (Ej: BAC #2)" class="rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2.5 text-sm text-gray-100" />
+                                <input v-model.number="posForm.commission_percent" type="number" min="0" max="100" step="0.01" required placeholder="% comisión" class="rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2.5 text-sm text-gray-100" />
+                            </div>
+                            <label class="inline-flex items-center gap-2 text-xs text-gray-300">
+                                <input v-model="posForm.is_active" type="checkbox" class="h-4 w-4 rounded border-gray-700 bg-gray-900 text-amber-400" />
+                                Activo
+                            </label>
+                            <div class="flex justify-end gap-2">
+                                <button v-if="posForm.id" type="button" class="rounded-xl border border-gray-700 px-3 py-2 text-xs font-semibold text-gray-100 hover:bg-gray-800" @click="resetPosForm">
+                                    Cancelar
+                                </button>
+                                <button type="submit" class="rounded-xl bg-amber-400 px-3 py-2 text-xs font-semibold text-black hover:bg-amber-300" :disabled="posForm.processing">
+                                    {{ posForm.id ? 'Guardar POS' : 'Crear POS' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-200">POS asignados</h3>
+                        <div class="mt-2 space-y-2">
+                            <article v-for="terminal in posTerminals" :key="terminal.id" class="rounded-xl border border-gray-800 bg-gray-950/60 p-3">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-100">{{ terminal.name }}</p>
+                                        <p class="text-xs text-gray-400">{{ terminal.bank_account_label || 'Sin cuenta' }}</p>
+                                        <p class="text-xs text-amber-300">Comisión: {{ money(terminal.commission_percent) }}%</p>
+                                        <p class="text-[11px]" :class="terminal.is_active ? 'text-emerald-300' : 'text-gray-500'">
+                                            {{ terminal.is_active ? 'Activo' : 'Inactivo' }}
+                                        </p>
+                                    </div>
+                                    <button type="button" class="rounded-md border border-gray-700 px-2 py-1 text-[11px] text-gray-200 hover:bg-gray-800" @click="editPosTerminal(terminal)">
+                                        Editar
+                                    </button>
+                                </div>
+                            </article>
+                            <p v-if="!posTerminals.length" class="rounded-xl border border-dashed border-gray-700 px-3 py-3 text-xs text-gray-400">
+                                No hay POS asignados.
+                            </p>
+                        </div>
+                    </div>
                 </article>
 
                 <article class="space-y-4 rounded-2xl border border-gray-800 bg-gray-900/80 p-4 ring-1 ring-black/30">
@@ -182,6 +234,7 @@ import AppLayout from '../../../Layouts/AppLayout.vue';
 
 const props = defineProps({
     accounts: { type: Array, default: () => [] },
+    pos_terminals: { type: Array, default: () => [] },
     movements: { type: Object, required: true },
     summary: { type: Object, default: () => ({ total_balance: 0, deposits: 0, withdrawals: 0 }) },
     filters: { type: Object, default: () => ({ q: '', account_id: null, date_from: '', date_to: '' }) },
@@ -210,6 +263,15 @@ const movementForm = useForm({
     amount: '',
     description: '',
     reference: '',
+});
+const posTerminals = computed(() => props.pos_terminals || []);
+
+const posForm = useForm({
+    id: null,
+    bank_account_id: props.accounts[0]?.id ?? null,
+    name: '',
+    commission_percent: 0,
+    is_active: true,
 });
 
 const activeAccounts = computed(() => props.accounts.filter((account) => account.is_active));
@@ -259,6 +321,16 @@ const resetAccountForm = () => {
     accountForm.is_active = true;
 };
 
+const resetPosForm = () => {
+    posForm.reset();
+    posForm.clearErrors();
+    posForm.id = null;
+    posForm.bank_account_id = activeAccounts.value[0]?.id ?? null;
+    posForm.name = '';
+    posForm.commission_percent = 0;
+    posForm.is_active = true;
+};
+
 const editAccount = (account) => {
     accountForm.id = account.id;
     accountForm.bank_name = account.bank_name;
@@ -267,6 +339,14 @@ const editAccount = (account) => {
     accountForm.currency = account.currency || 'GTQ';
     accountForm.current_balance = account.current_balance;
     accountForm.is_active = !!account.is_active;
+};
+
+const editPosTerminal = (terminal) => {
+    posForm.id = terminal.id;
+    posForm.bank_account_id = terminal.bank_account_id;
+    posForm.name = terminal.name;
+    posForm.commission_percent = terminal.commission_percent;
+    posForm.is_active = !!terminal.is_active;
 };
 
 const submitAccount = () => {
@@ -291,6 +371,29 @@ const submitAccount = () => {
     accountForm.transform(() => payload).post('/admin/banks/accounts', {
         preserveScroll: true,
         onSuccess: () => resetAccountForm(),
+    });
+};
+
+const submitPosTerminal = () => {
+    const payload = {
+        bank_account_id: posForm.bank_account_id,
+        name: posForm.name,
+        commission_percent: posForm.commission_percent,
+        is_active: !!posForm.is_active,
+    };
+
+    if (posForm.id) {
+        posForm.transform(() => ({ ...payload, _method: 'PUT' }))
+            .post(`/admin/banks/pos-terminals/${posForm.id}`, {
+                preserveScroll: true,
+                onSuccess: () => resetPosForm(),
+            });
+        return;
+    }
+
+    posForm.transform(() => payload).post('/admin/banks/pos-terminals', {
+        preserveScroll: true,
+        onSuccess: () => resetPosForm(),
     });
 };
 

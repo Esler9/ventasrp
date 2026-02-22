@@ -266,13 +266,23 @@
                                 <div class="grid grid-cols-[minmax(7rem,1fr)_minmax(5rem,0.65fr)_minmax(8rem,1fr)_2.5rem] gap-1.5">
                                     <select v-model="payment.method" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs">
                                         <option value="cash">Efectivo</option>
-                                        <option value="card">Tarjeta</option>
+                                        <option value="card" :disabled="cardPosTerminals.length === 0">Tarjeta</option>
                                         <option value="transfer" :disabled="bankAccounts.length === 0">Transferencia</option>
                                     </select>
                                     <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-sm" />
                                     <input v-model.trim="payment.reference" type="text" maxlength="100" :placeholder="payment.method === 'card' ? 'Ref tarjeta *' : 'Referencia'" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs" />
                                     <button type="button" class="h-8 rounded-md border border-amber-800/60 px-2 text-xs" @click="removePayment(idx)">X</button>
                                 </div>
+                                <select
+                                    v-if="payment.method === 'card'"
+                                    v-model="payment.card_pos_terminal_id"
+                                    class="h-8 w-full rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs"
+                                >
+                                    <option :value="null" disabled>Selecciona POS</option>
+                                    <option v-for="terminal in cardPosTerminals" :key="`desk-pos-${terminal.id}`" :value="terminal.id">
+                                        {{ terminal.name }} · {{ terminal.bank_account_label }} · {{ terminal.commission_percent }}%
+                                    </option>
+                                </select>
                                 <select
                                     v-if="payment.method === 'transfer'"
                                     v-model="payment.bank_account_id"
@@ -292,6 +302,7 @@
                         <p class="text-xs uppercase tracking-wide text-slate-400">Resumen de venta</p>
                     <p class="mt-1 text-5xl font-bold leading-none">Q{{ money(total) }}</p>
                     <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
+                    <p v-if="hasCardWithoutPosTerminal" class="mt-1 text-xs text-amber-300">Selecciona POS en cada pago con tarjeta.</p>
                     <p v-if="hasTransferWithoutAccount" class="mt-1 text-xs text-amber-300">Selecciona cuenta bancaria para cada transferencia.</p>
                     <p v-if="hasCardWithoutReference" class="mt-1 text-xs text-amber-300">Ingresa referencia en cada pago con tarjeta.</p>
                     <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
@@ -435,13 +446,23 @@
                             <div class="grid grid-cols-6 gap-2">
                                 <select v-model="payment.method" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm">
                                     <option value="cash">Efectivo</option>
-                                    <option value="card">Tarjeta</option>
+                                    <option value="card" :disabled="cardPosTerminals.length === 0">Tarjeta</option>
                                     <option value="transfer" :disabled="bankAccounts.length === 0">Transferencia</option>
                                 </select>
                                 <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
                                 <button type="button" class="col-span-1 rounded-lg border border-amber-800/60 text-xs" @click="removePayment(idx)">X</button>
                                 <input v-model.trim="payment.reference" type="text" maxlength="100" :placeholder="payment.method === 'card' ? 'Ref tarjeta *' : 'Referencia'" class="col-span-6 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
                             </div>
+                            <select
+                                v-if="payment.method === 'card'"
+                                v-model="payment.card_pos_terminal_id"
+                                class="w-full rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm"
+                            >
+                                <option :value="null" disabled>Selecciona POS</option>
+                                <option v-for="terminal in cardPosTerminals" :key="`mobile-pos-${terminal.id}`" :value="terminal.id">
+                                    {{ terminal.name }} · {{ terminal.bank_account_label }} · {{ terminal.commission_percent }}%
+                                </option>
+                            </select>
                             <select
                                 v-if="payment.method === 'transfer'"
                                 v-model="payment.bank_account_id"
@@ -461,6 +482,7 @@
                     <p class="text-xs uppercase tracking-wide text-slate-400">Resumen de venta</p>
                     <p class="mt-1 text-4xl font-bold leading-none">Q{{ money(total) }}</p>
                     <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
+                    <p v-if="hasCardWithoutPosTerminal" class="mt-1 text-xs text-amber-300">Selecciona POS en cada pago con tarjeta.</p>
                     <p v-if="hasTransferWithoutAccount" class="mt-1 text-xs text-amber-300">Selecciona cuenta bancaria para cada transferencia.</p>
                     <p v-if="hasCardWithoutReference" class="mt-1 text-xs text-amber-300">Ingresa referencia en cada pago con tarjeta.</p>
                     <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
@@ -546,6 +568,7 @@ const props = defineProps({
     selected_category_id: { type: Number, default: 0 },
     clients: { type: Array, default: () => [] },
     bank_accounts: { type: Array, default: () => [] },
+    card_pos_terminals: { type: Array, default: () => [] },
     defaults: { type: Object, default: () => ({ sale_code: '', customer_id: null, customer_name: 'CF' }) },
     open_cash_session: { type: Object, default: null },
 });
@@ -563,6 +586,7 @@ const topCategories = computed(() => props.top_categories || []);
 const filteredProducts = computed(() => products.value.filter((product) => Number(product.stock || 0) > 0));
 const clientsOptions = ref([...(props.clients || [])]);
 const bankAccounts = computed(() => props.bank_accounts || []);
+const cardPosTerminals = computed(() => props.card_pos_terminals || []);
 const quickClientOpen = ref(false);
 const quickClientSaving = ref(false);
 const quickClientError = ref('');
@@ -581,7 +605,7 @@ const saleForm = useForm({
     customer_id: props.defaults.customer_id || null,
     customer_name: props.defaults.customer_name || 'CF',
     items: [],
-    payments: [{ method: 'cash', bank_account_id: null, reference: '', amount: 0 }],
+    payments: [{ method: 'cash', bank_account_id: null, card_pos_terminal_id: null, reference: '', amount: 0 }],
 });
 
 const displaySaleCode = computed(() => saleForm.sale_code || '---');
@@ -698,6 +722,9 @@ const paymentsMatch = computed(() => Math.abs(paymentsTotal.value - total.value)
 const hasTransferWithoutAccount = computed(() =>
     saleForm.payments.some((payment) => payment.method === 'transfer' && !payment.bank_account_id),
 );
+const hasCardWithoutPosTerminal = computed(() =>
+    saleForm.payments.some((payment) => payment.method === 'card' && !payment.card_pos_terminal_id),
+);
 const hasCardWithoutReference = computed(() =>
     saleForm.payments.some((payment) => payment.method === 'card' && !String(payment.reference || '').trim()),
 );
@@ -744,18 +771,31 @@ watch(
             if (!Object.prototype.hasOwnProperty.call(payment, 'bank_account_id')) {
                 payment.bank_account_id = null;
             }
+            if (!Object.prototype.hasOwnProperty.call(payment, 'card_pos_terminal_id')) {
+                payment.card_pos_terminal_id = null;
+            }
             if (!Object.prototype.hasOwnProperty.call(payment, 'reference')) {
                 payment.reference = '';
+            }
+
+            if (payment.method === 'card') {
+                if (!payment.card_pos_terminal_id && cardPosTerminals.value.length > 0) {
+                    payment.card_pos_terminal_id = cardPosTerminals.value[0].id;
+                }
+                payment.bank_account_id = null;
+                return;
             }
 
             if (payment.method === 'transfer') {
                 if (!payment.bank_account_id && bankAccounts.value.length > 0) {
                     payment.bank_account_id = bankAccounts.value[0].id;
                 }
+                payment.card_pos_terminal_id = null;
                 return;
             }
 
             payment.bank_account_id = null;
+            payment.card_pos_terminal_id = null;
         });
     },
     { deep: true },
@@ -803,7 +843,7 @@ watch(
 );
 
 const addPayment = () => {
-    saleForm.payments.push({ method: 'cash', bank_account_id: null, reference: '', amount: 0 });
+    saleForm.payments.push({ method: 'cash', bank_account_id: null, card_pos_terminal_id: null, reference: '', amount: 0 });
 };
 
 const removePayment = (index) => {
@@ -815,6 +855,7 @@ const canSubmit = computed(() =>
     openCashSession.value
     && cart.value.length > 0
     && paymentsMatch.value
+    && !hasCardWithoutPosTerminal.value
     && !hasTransferWithoutAccount.value
     && !hasCardWithoutReference.value
     && !saleForm.processing,
@@ -835,7 +876,7 @@ const submitSale = () => {
         preserveScroll: true,
         onSuccess: () => {
             cart.value = [];
-            saleForm.payments = [{ method: 'cash', bank_account_id: null, reference: '', amount: 0 }];
+            saleForm.payments = [{ method: 'cash', bank_account_id: null, card_pos_terminal_id: null, reference: '', amount: 0 }];
             saleForm.sale_code = '';
             saleForm.customer_id = null;
             saleForm.customer_name = 'CF';
@@ -957,6 +998,7 @@ const printSaleTicket = () => {
             <tr>
                 <td style="padding:3px 0;">
                     ${escapeHtml(payment.method)}
+                    ${payment.pos ? `<br><span style="font-size:11px;color:#4b5563;">POS: ${escapeHtml(payment.pos)}</span>` : ''}
                     ${payment.reference ? `<br><span style="font-size:11px;color:#4b5563;">Ref: ${escapeHtml(payment.reference)}</span>` : ''}
                 </td>
                 <td style="padding:3px 0;text-align:right;">Q${money(payment.amount)}</td>

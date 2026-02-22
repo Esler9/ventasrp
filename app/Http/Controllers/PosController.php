@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Models\InventoryMovement;
 use App\Models\BankAccount;
 use App\Models\BankMovement;
+use App\Models\BankPosTerminal;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SalePayment;
@@ -104,6 +105,14 @@ class PosController extends Controller
             ->orderBy('account_name')
             ->get(['id', 'bank_name', 'account_name', 'currency']);
 
+        $cardPosTerminals = BankPosTerminal::query()
+            ->with('bankAccount:id,bank_name,account_name,currency,is_active')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->filter(fn (BankPosTerminal $terminal) => (bool) $terminal->bankAccount?->is_active)
+            ->values();
+
         return Inertia::render('Pos/Index', [
             'products' => $products,
             'filters' => [
@@ -124,6 +133,14 @@ class PosController extends Controller
                 'id' => $account->id,
                 'label' => trim($account->bank_name . ' · ' . $account->account_name),
                 'currency' => $account->currency,
+            ])->values(),
+            'card_pos_terminals' => $cardPosTerminals->map(fn (BankPosTerminal $terminal) => [
+                'id' => $terminal->id,
+                'name' => $terminal->name,
+                'commission_percent' => (float) $terminal->commission_percent,
+                'bank_account_id' => $terminal->bank_account_id,
+                'bank_account_label' => trim(($terminal->bankAccount?->bank_name ?? '') . ' · ' . ($terminal->bankAccount?->account_name ?? '')),
+                'currency' => $terminal->bankAccount?->currency ?? 'GTQ',
             ])->values(),
             'defaults' => [
                 'customer_id' => null,
@@ -157,6 +174,7 @@ class PosController extends Controller
             'payments' => ['nullable', 'array'],
             'payments.*.method' => ['required_with:payments', Rule::in(['cash', 'card', 'transfer'])],
             'payments.*.bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
+            'payments.*.card_pos_terminal_id' => ['nullable', 'integer', 'exists:bank_pos_terminals,id'],
             'payments.*.reference' => ['nullable', 'string', 'max:100'],
             'payments.*.amount' => ['required_with:payments', 'numeric', 'min:0.01'],
         ]);
@@ -235,12 +253,17 @@ class PosController extends Controller
                     $payments = collect([[
                         'method' => 'cash',
                         'bank_account_id' => null,
+                        'card_pos_terminal_id' => null,
                         'reference' => null,
                         'amount' => $total,
                     ]]);
                 }
 
                 foreach ($payments as $payment) {
+                    if (($payment['method'] ?? null) === 'card' && empty($payment['card_pos_terminal_id'])) {
+                        throw new \RuntimeException('Selecciona el POS para cada pago con tarjeta.');
+                    }
+
                     if (($payment['method'] ?? null) === 'card' && trim((string) ($payment['reference'] ?? '')) === '') {
                         throw new \RuntimeException('Ingresa el número de referencia para cada pago con tarjeta.');
                     }
@@ -271,6 +294,32 @@ class PosController extends Controller
 
                         if (! $account || ! $account->is_active) {
                             throw new \RuntimeException('Una de las cuentas bancarias seleccionadas no está activa.');
+                        }
+                    }
+                }
+
+                $cardPosIds = $payments
+                    ->filter(fn (array $payment) => ($payment['method'] ?? null) === 'card')
+                    ->pluck('card_pos_terminal_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+
+                $cardPosById = collect();
+                if ($cardPosIds->isNotEmpty()) {
+                    $cardPosById = BankPosTerminal::query()
+                        ->with('bankAccount:id,is_active')
+                        ->whereIn('id', $cardPosIds)
+                        ->lockForUpdate()
+                        ->get()
+                        ->keyBy(fn (BankPosTerminal $terminal) => (int) $terminal->id);
+
+                    foreach ($cardPosIds as $terminalId) {
+                        /** @var BankPosTerminal|null $terminal */
+                        $terminal = $cardPosById->get((int) $terminalId);
+                        if (! $terminal || ! $terminal->is_active || ! $terminal->bankAccount || ! $terminal->bankAccount->is_active) {
+                            throw new \RuntimeException('Uno de los POS seleccionados no está disponible.');
                         }
                     }
                 }
@@ -332,7 +381,27 @@ class PosController extends Controller
                     $method = (string) $payment['method'];
                     $amount = round((float) $payment['amount'], 2);
                     $bankAccountId = isset($payment['bank_account_id']) ? (int) $payment['bank_account_id'] : null;
+                    $cardPosTerminalId = isset($payment['card_pos_terminal_id']) ? (int) $payment['card_pos_terminal_id'] : null;
                     $reference = trim((string) ($payment['reference'] ?? '')) ?: null;
+                    $commissionPercent = null;
+                    $commissionAmount = null;
+                    $netAmount = null;
+
+                    if ($method === 'card') {
+                        /** @var BankPosTerminal|null $terminal */
+                        $terminal = $cardPosById->get((int) $cardPosTerminalId);
+                        if (! $terminal || ! $terminal->bankAccount || ! $terminal->bankAccount->is_active) {
+                            throw new \RuntimeException('El POS seleccionado no está disponible.');
+                        }
+
+                        $bankAccountId = (int) $terminal->bank_account_id;
+                        $commissionPercent = round((float) $terminal->commission_percent, 2);
+                        $commissionAmount = round(($amount * $commissionPercent) / 100, 2);
+                        $netAmount = round($amount - $commissionAmount, 2);
+                        if ($netAmount < 0) {
+                            $netAmount = 0.0;
+                        }
+                    }
 
                     SalePayment::create([
                         'sale_id' => $sale->id,
@@ -340,7 +409,11 @@ class PosController extends Controller
                         'user_id' => $user->id,
                         'method' => $method,
                         'bank_account_id' => $bankAccountId,
+                        'card_pos_terminal_id' => $cardPosTerminalId,
                         'reference' => $reference,
+                        'commission_percent' => $commissionPercent,
+                        'commission_amount' => $commissionAmount,
+                        'net_amount' => $netAmount,
                         'amount' => $amount,
                     ]);
 
@@ -379,6 +452,41 @@ class PosController extends Controller
                             'reference' => $sale->sale_code,
                         ]);
                     }
+
+                    if ($method === 'card') {
+                        /** @var BankPosTerminal|null $terminal */
+                        $terminal = $cardPosById->get((int) $cardPosTerminalId);
+                        if (! $terminal) {
+                            throw new \RuntimeException('El POS seleccionado no está disponible.');
+                        }
+
+                        $bankAccount = BankAccount::query()->lockForUpdate()->find($terminal->bank_account_id);
+                        if (! $bankAccount || ! $bankAccount->is_active) {
+                            throw new \RuntimeException('La cuenta bancaria del POS no está disponible.');
+                        }
+
+                        $netDeposit = round((float) ($netAmount ?? $amount), 2);
+                        $commissionValue = round((float) ($commissionAmount ?? 0), 2);
+
+                        $bankAccount->increment('current_balance', $netDeposit);
+
+                        BankMovement::create([
+                            'bank_account_id' => $bankAccount->id,
+                            'user_id' => $user->id,
+                            'movement_date' => now()->toDateString(),
+                            'type' => 'deposit',
+                            'amount' => $netDeposit,
+                            'description' => sprintf(
+                                'Por venta %s · Cliente %s · POS %s · Comisión %.2f%% (Q%.2f)',
+                                $sale->sale_code,
+                                $sale->customer_name ?: 'CF',
+                                $terminal->name,
+                                (float) ($commissionPercent ?? 0),
+                                $commissionValue,
+                            ),
+                            'reference' => $reference ?: $sale->sale_code,
+                        ]);
+                    }
                 }
 
                 session()->flash('success', [
@@ -405,6 +513,9 @@ class PosController extends Controller
                     'payments' => $payments->map(fn (array $payment) => [
                         'method' => $this->paymentMethodLabel((string) $payment['method']),
                         'reference' => trim((string) ($payment['reference'] ?? '')) ?: null,
+                        'pos' => isset($payment['card_pos_terminal_id'])
+                            ? optional($cardPosById->get((int) $payment['card_pos_terminal_id']))->name
+                            : null,
                         'amount' => round((float) $payment['amount'], 2),
                     ])->values(),
                 ];

@@ -13,12 +13,19 @@ class SalePayment extends Model
         'user_id',
         'method',
         'bank_account_id',
+        'card_pos_terminal_id',
         'reference',
+        'commission_percent',
+        'commission_amount',
+        'net_amount',
         'amount',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'commission_percent' => 'decimal:2',
+        'commission_amount' => 'decimal:2',
+        'net_amount' => 'decimal:2',
     ];
 
     public function sale(): BelongsTo
@@ -39,5 +46,10 @@ class SalePayment extends Model
     public function bankAccount(): BelongsTo
     {
         return $this->belongsTo(BankAccount::class);
+    }
+
+    public function cardPosTerminal(): BelongsTo
+    {
+        return $this->belongsTo(BankPosTerminal::class, 'card_pos_terminal_id');
     }
 }

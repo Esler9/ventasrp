@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
 use App\Models\BankMovement;
+use App\Models\BankPosTerminal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,9 @@ class BankController extends Controller
         $dateTo = trim((string) $request->query('date_to', now()->toDateString()));
 
         $accounts = BankAccount::query()
+            ->with(['posTerminals' => function ($query) {
+                $query->orderBy('name');
+            }])
             ->orderBy('bank_name')
             ->orderBy('account_name')
             ->get()
@@ -34,6 +38,26 @@ class BankController extends Controller
                 'currency' => $account->currency,
                 'current_balance' => (float) $account->current_balance,
                 'is_active' => (bool) $account->is_active,
+                'pos_terminals' => $account->posTerminals->map(fn (BankPosTerminal $terminal) => [
+                    'id' => $terminal->id,
+                    'name' => $terminal->name,
+                    'commission_percent' => (float) $terminal->commission_percent,
+                    'is_active' => (bool) $terminal->is_active,
+                ])->values(),
+            ])
+            ->values();
+
+        $posTerminals = BankPosTerminal::query()
+            ->with('bankAccount:id,bank_name,account_name')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (BankPosTerminal $terminal) => [
+                'id' => $terminal->id,
+                'bank_account_id' => $terminal->bank_account_id,
+                'bank_account_label' => $this->accountLabel($terminal->bankAccount),
+                'name' => $terminal->name,
+                'commission_percent' => (float) $terminal->commission_percent,
+                'is_active' => (bool) $terminal->is_active,
             ])
             ->values();
 
@@ -74,6 +98,7 @@ class BankController extends Controller
 
         return Inertia::render('Admin/Banks/Index', [
             'accounts' => $accounts,
+            'pos_terminals' => $posTerminals,
             'movements' => $movements,
             'summary' => $summary,
             'filters' => [
@@ -236,6 +261,50 @@ class BankController extends Controller
         return back()->with('success', [
             'title' => 'Movimiento bancario registrado',
             'description' => 'La operación fue registrada correctamente.',
+        ]);
+    }
+
+    public function storePosTerminal(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'bank_account_id' => ['required', 'integer', Rule::exists('bank_accounts', 'id')->where('is_active', true)],
+            'name' => ['required', 'string', 'max:120'],
+            'commission_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        BankPosTerminal::create([
+            'bank_account_id' => (int) $data['bank_account_id'],
+            'name' => trim((string) $data['name']),
+            'commission_percent' => round((float) $data['commission_percent'], 2),
+            'is_active' => (bool) ($data['is_active'] ?? true),
+        ]);
+
+        return back()->with('success', [
+            'title' => 'POS bancario creado',
+            'description' => 'El POS quedó asignado a la cuenta bancaria.',
+        ]);
+    }
+
+    public function updatePosTerminal(Request $request, BankPosTerminal $terminal): RedirectResponse
+    {
+        $data = $request->validate([
+            'bank_account_id' => ['required', 'integer', Rule::exists('bank_accounts', 'id')->where('is_active', true)],
+            'name' => ['required', 'string', 'max:120'],
+            'commission_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $terminal->update([
+            'bank_account_id' => (int) $data['bank_account_id'],
+            'name' => trim((string) $data['name']),
+            'commission_percent' => round((float) $data['commission_percent'], 2),
+            'is_active' => (bool) ($data['is_active'] ?? true),
+        ]);
+
+        return back()->with('success', [
+            'title' => 'POS bancario actualizado',
+            'description' => 'Los cambios fueron guardados.',
         ]);
     }
 

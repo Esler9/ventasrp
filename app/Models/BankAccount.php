@@ -25,4 +25,9 @@ class BankAccount extends Model
     {
         return $this->hasMany(BankMovement::class);
     }
+
+    public function posTerminals(): HasMany
+    {
+        return $this->hasMany(BankPosTerminal::class);
+    }
 }
