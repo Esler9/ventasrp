@@ -8,6 +8,7 @@ use App\Models\CashSession;
 use App\Models\Client;
 use App\Models\InventoryMovement;
 use App\Models\BankAccount;
+use App\Models\BankMovement;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SalePayment;
@@ -251,16 +252,18 @@ class PosController extends Controller
                     ->unique()
                     ->values();
 
+                $transferAccountsById = collect();
                 if ($transferAccountIds->isNotEmpty()) {
-                    $activeTransferAccounts = BankAccount::query()
+                    $transferAccountsById = BankAccount::query()
                         ->whereIn('id', $transferAccountIds)
-                        ->where('is_active', true)
-                        ->pluck('id')
-                        ->map(fn ($id) => (int) $id)
-                        ->all();
+                        ->lockForUpdate()
+                        ->get()
+                        ->keyBy(fn (BankAccount $account) => (int) $account->id);
 
                     foreach ($transferAccountIds as $accountId) {
-                        if (! in_array($accountId, $activeTransferAccounts, true)) {
+                        $account = $transferAccountsById->get((int) $accountId);
+
+                        if (! $account || ! $account->is_active) {
                             throw new \RuntimeException('Una de las cuentas bancarias seleccionadas no está activa.');
                         }
                     }
@@ -322,13 +325,14 @@ class PosController extends Controller
                 foreach ($payments as $payment) {
                     $method = (string) $payment['method'];
                     $amount = round((float) $payment['amount'], 2);
+                    $bankAccountId = isset($payment['bank_account_id']) ? (int) $payment['bank_account_id'] : null;
 
                     SalePayment::create([
                         'sale_id' => $sale->id,
                         'cash_session_id' => $session->id,
                         'user_id' => $user->id,
                         'method' => $method,
-                        'bank_account_id' => isset($payment['bank_account_id']) ? (int) $payment['bank_account_id'] : null,
+                        'bank_account_id' => $bankAccountId,
                         'amount' => $amount,
                     ]);
 
@@ -341,6 +345,30 @@ class PosController extends Controller
                             'amount' => $amount,
                             'note' => 'Venta ' . $sale->sale_code,
                             'meta' => ['sale_id' => $sale->id],
+                        ]);
+                    }
+
+                    if ($method === 'transfer') {
+                        if (! $bankAccountId) {
+                            throw new \RuntimeException('Selecciona la cuenta bancaria para cada pago por transferencia.');
+                        }
+
+                        /** @var BankAccount|null $bankAccount */
+                        $bankAccount = $transferAccountsById->get($bankAccountId);
+                        if (! $bankAccount || ! $bankAccount->is_active) {
+                            throw new \RuntimeException('La cuenta bancaria seleccionada no está disponible.');
+                        }
+
+                        $bankAccount->increment('current_balance', $amount);
+
+                        BankMovement::create([
+                            'bank_account_id' => $bankAccount->id,
+                            'user_id' => $user->id,
+                            'movement_date' => now()->toDateString(),
+                            'type' => 'deposit',
+                            'amount' => $amount,
+                            'description' => 'Ingreso por venta ' . $sale->sale_code,
+                            'reference' => $sale->sale_code,
                         ]);
                     }
                 }

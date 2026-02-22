@@ -267,7 +267,7 @@
                                     <select v-model="payment.method" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs">
                                         <option value="cash">Efectivo</option>
                                         <option value="card">Tarjeta</option>
-                                        <option value="transfer">Transferencia</option>
+                                        <option value="transfer" :disabled="bankAccounts.length === 0">Transferencia</option>
                                     </select>
                                     <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-sm" />
                                     <button type="button" class="h-8 rounded-md border border-amber-800/60 px-2 text-xs" @click="removePayment(idx)">X</button>
@@ -289,9 +289,10 @@
 
                     <div class="shrink-0 border-t border-slate-800 bg-slate-900 p-4">
                         <p class="text-xs uppercase tracking-wide text-slate-400">Resumen de venta</p>
-                        <p class="mt-1 text-5xl font-bold leading-none">Q{{ money(total) }}</p>
-                        <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
-                        <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
+                    <p class="mt-1 text-5xl font-bold leading-none">Q{{ money(total) }}</p>
+                    <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
+                    <p v-if="hasTransferWithoutAccount" class="mt-1 text-xs text-amber-300">Selecciona cuenta bancaria para cada transferencia.</p>
+                    <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
                         <button
                             type="button"
                             class="mt-3 w-full rounded-2xl bg-sky-500 px-4 py-3 text-lg font-semibold text-white shadow-lg shadow-sky-700/30 disabled:opacity-50"
@@ -433,7 +434,7 @@
                                 <select v-model="payment.method" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm">
                                     <option value="cash">Efectivo</option>
                                     <option value="card">Tarjeta</option>
-                                    <option value="transfer">Transferencia</option>
+                                    <option value="transfer" :disabled="bankAccounts.length === 0">Transferencia</option>
                                 </select>
                                 <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="col-span-2 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
                                 <button type="button" class="rounded-lg border border-amber-800/60 text-xs" @click="removePayment(idx)">X</button>
@@ -457,6 +458,7 @@
                     <p class="text-xs uppercase tracking-wide text-slate-400">Resumen de venta</p>
                     <p class="mt-1 text-4xl font-bold leading-none">Q{{ money(total) }}</p>
                     <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
+                    <p v-if="hasTransferWithoutAccount" class="mt-1 text-xs text-amber-300">Selecciona cuenta bancaria para cada transferencia.</p>
                     <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
                     <button
                         type="button"
@@ -689,6 +691,9 @@ const total = computed(() => cart.value.reduce((sum, item) => sum + Number(item.
 const itemsCount = computed(() => cart.value.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
 const paymentsTotal = computed(() => saleForm.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0));
 const paymentsMatch = computed(() => Math.abs(paymentsTotal.value - total.value) < 0.01);
+const hasTransferWithoutAccount = computed(() =>
+    saleForm.payments.some((payment) => payment.method === 'transfer' && !payment.bank_account_id),
+);
 
 const qtyByProduct = computed(() => {
     const qty = {};
@@ -796,7 +801,13 @@ const removePayment = (index) => {
     saleForm.payments.splice(index, 1);
 };
 
-const canSubmit = computed(() => openCashSession.value && cart.value.length > 0 && paymentsMatch.value && !saleForm.processing);
+const canSubmit = computed(() =>
+    openCashSession.value
+    && cart.value.length > 0
+    && paymentsMatch.value
+    && !hasTransferWithoutAccount.value
+    && !saleForm.processing,
+);
 
 const submitSale = () => {
     saleForm.items = cart.value.map((item) => ({
