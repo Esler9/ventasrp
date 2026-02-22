@@ -31,7 +31,7 @@
             </div>
         </header>
 
-        <div class="mx-auto max-w-6xl space-y-4 px-4 pb-64 pt-4" :style="contentSafeArea">
+        <div class="mx-auto max-w-6xl space-y-4 px-4 pb-10 pt-4 md:pb-6" :style="contentSafeArea">
             <div v-if="!openCashSession" class="rounded-xl border border-rose-700/60 bg-rose-900/20 p-3 text-sm text-rose-200">
                 Debes abrir caja antes de vender.
                 <a href="/admin/cash" class="font-semibold underline">Ir a Caja</a>
@@ -132,20 +132,37 @@
         </div>
 
         <div class="fixed left-0 right-0 z-30" :style="checkoutDockStyle">
-            <div class="mx-auto max-w-6xl px-4">
-                <section class="rounded-t-3xl border border-slate-800 bg-slate-900/95 shadow-2xl backdrop-blur">
-                    <button type="button" class="flex w-full flex-col gap-2 px-4 pb-3 pt-2 text-left" @click="drawerOpen = !drawerOpen">
-                        <div class="mx-auto h-1.5 w-14 rounded-full bg-slate-600"></div>
-                        <div class="flex items-end justify-between">
-                            <div>
-                                <p class="text-xs uppercase tracking-wide text-slate-400">Total ({{ itemsCount }} items)</p>
-                                <p class="text-5xl font-bold leading-none">Q{{ money(total) }}</p>
-                            </div>
-                            <p class="text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
-                        </div>
-                    </button>
+            <div class="mx-auto max-w-6xl px-3 md:px-4">
+                <section class="rounded-2xl border border-slate-800 bg-slate-900/95 shadow-2xl backdrop-blur md:ml-auto md:max-w-2xl">
+                    <div class="px-3 pb-3 pt-2 md:px-4 md:pt-3">
+                        <div class="grid gap-2 md:grid-cols-[1fr_auto] md:items-end md:gap-3">
+                            <button type="button" class="w-full text-left" @click="drawerOpen = !drawerOpen">
+                                <div class="mx-auto mb-2 h-1.5 w-14 rounded-full bg-slate-600 md:hidden"></div>
+                                <div class="flex items-end justify-between gap-2">
+                                    <div>
+                                        <p class="text-[11px] uppercase tracking-wide text-slate-400 md:text-xs">Total ({{ itemsCount }} items)</p>
+                                        <p class="text-4xl font-bold leading-none md:text-5xl">Q{{ money(total) }}</p>
+                                    </div>
+                                    <p class="pb-1 text-[11px] md:text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">
+                                        Pagado: Q{{ money(paymentsTotal) }}
+                                    </p>
+                                </div>
+                            </button>
 
-                    <div v-if="drawerOpen" class="space-y-3 border-t border-slate-800 px-4 pb-4 pt-3 max-h-[40vh] overflow-y-auto">
+                            <button
+                                type="button"
+                                class="w-full rounded-2xl bg-sky-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-sky-700/30 disabled:opacity-50 md:min-w-52 md:text-lg"
+                                :disabled="!canSubmit"
+                                @click="submitSale"
+                            >
+                                Pagar Ahora <i class="fa-solid fa-arrow-right ml-1.5"></i>
+                            </button>
+                        </div>
+
+                        <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300 md:text-sm">{{ saleForm.errors.sale }}</div>
+                    </div>
+
+                    <div v-if="drawerOpen" class="space-y-3 border-t border-slate-800 px-4 pb-4 pt-3 max-h-[46vh] overflow-y-auto">
                         <div class="grid gap-3 md:grid-cols-2">
                             <div>
                                 <label class="text-xs text-slate-400">Código de venta</label>
@@ -233,17 +250,6 @@
                         </div>
                     </div>
 
-                    <div class="px-4 pb-4">
-                        <div v-if="saleForm.errors.sale" class="mb-2 text-sm text-rose-300">{{ saleForm.errors.sale }}</div>
-                        <button
-                            type="button"
-                            class="w-full rounded-2xl bg-sky-500 px-4 py-4 text-xl font-semibold text-white shadow-lg shadow-sky-700/30 disabled:opacity-50"
-                            :disabled="!canSubmit"
-                            @click="submitSale"
-                        >
-                            Pagar Ahora <i class="fa-solid fa-arrow-right ml-2"></i>
-                        </button>
-                    </div>
                 </section>
             </div>
         </div>
@@ -553,7 +559,7 @@ const checkoutDockStyle = computed(() => ({
 }));
 
 const contentSafeArea = computed(() => ({
-    paddingBottom: `calc(13rem + ${bottomNavHeight} + env(safe-area-inset-bottom, 0px))`,
+    paddingBottom: `calc(8rem + ${bottomNavHeight} + env(safe-area-inset-bottom, 0px))`,
 }));
 
 const logoutForm = useForm({});
