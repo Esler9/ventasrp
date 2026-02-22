@@ -110,6 +110,10 @@
                                         <i class="fa-solid fa-boxes-stacked mr-1"></i>{{ product.stock }}
                                     </div>
 
+                                    <div v-if="Number(product.stock) <= 0" class="absolute left-2 top-2 rounded-lg bg-rose-500 px-2 py-1 text-[10px] font-semibold text-white">
+                                        <i class="fa-solid fa-ban mr-1"></i>Agotado
+                                    </div>
+
                                     <div v-if="Number(product.stock) <= 5" class="absolute left-2 top-2 rounded-lg bg-amber-400 px-2 py-1 text-[10px] font-semibold text-black">
                                         <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ product.stock }} left
                                     </div>
@@ -129,10 +133,13 @@
                                         <button
                                             type="button"
                                             class="flex h-11 w-11 items-center justify-center rounded-full"
-                                            :class="qtyByProduct[product.id] ? 'bg-sky-500 text-white' : 'bg-sky-500/20 text-sky-300'"
+                                            :class="Number(product.stock) <= 0
+                                                ? 'cursor-not-allowed bg-slate-700/60 text-slate-500'
+                                                : (qtyByProduct[product.id] ? 'bg-sky-500 text-white' : 'bg-sky-500/20 text-sky-300')"
+                                            :disabled="Number(product.stock) <= 0"
                                             @click="addProduct(product)"
                                         >
-                                            <i :class="qtyByProduct[product.id] ? 'fa-solid fa-check' : 'fa-solid fa-plus'"></i>
+                                            <i :class="Number(product.stock) <= 0 ? 'fa-solid fa-ban' : (qtyByProduct[product.id] ? 'fa-solid fa-check' : 'fa-solid fa-plus')"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -586,6 +593,10 @@ const setCategory = (categoryId) => {
 };
 
 const addProduct = (product) => {
+    if (Number(product.stock) <= 0) {
+        return;
+    }
+
     const existing = cart.value.find((item) => item.product_id === product.id && item.presentation_name === (product.unit_label || 'Unidad'));
     if (existing) {
         existing.quantity += 1;
