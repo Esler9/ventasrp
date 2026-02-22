@@ -24,6 +24,15 @@
                         </div>
                     </div>
 
+                    <div>
+                        <label class="text-xs text-gray-400">Cálculo de recargo</label>
+                        <select v-model="form.surcharge_calculation_mode" class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/70 px-3 py-3 text-sm">
+                            <option value="sum">Suma (10 + 12%)</option>
+                            <option value="division">División (10 / 0.88)</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">Se usa al aplicar recargo en formas de pago.</p>
+                    </div>
+
                     <div class="grid gap-3 sm:grid-cols-2">
                         <div>
                             <label class="text-xs text-gray-400">Moneda</label>
@@ -67,6 +76,7 @@
                     </div>
                     <p class="text-sm font-semibold text-gray-50">VentasRP</p>
                     <p class="mt-1 text-xs text-gray-400">Moneda activa: {{ form.currency_code }} ({{ form.currency_symbol }})</p>
+                    <p class="mt-1 text-xs text-gray-400">Recargo: {{ form.surcharge_calculation_mode === 'division' ? 'División' : 'Suma' }}</p>
                     <button type="button" class="mt-3 rounded-xl px-3 py-2 text-sm font-semibold text-white" :style="{ backgroundColor: form.primary_color }">
                         Boton primario
                     </button>
@@ -93,6 +103,7 @@ const props = defineProps({
             secondary_color: '#0EA5E9',
             currency_code: 'GTQ',
             currency_symbol: 'Q',
+            surcharge_calculation_mode: 'sum',
         }),
     },
     currencies: {
@@ -107,6 +118,7 @@ const form = useForm({
     secondary_color: props.settings.secondary_color || '#0EA5E9',
     currency_code: props.settings.currency_code || 'GTQ',
     currency_symbol: props.settings.currency_symbol || 'Q',
+    surcharge_calculation_mode: props.settings.surcharge_calculation_mode || 'sum',
 });
 
 const hasErrors = computed(() => Object.keys(form.errors).length > 0);

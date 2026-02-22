@@ -29,6 +29,7 @@ class SettingsController extends Controller
                 'secondary_color' => $settings->secondary_color,
                 'currency_code' => $settings->currency_code ?: 'GTQ',
                 'currency_symbol' => $settings->currency_symbol ?: 'Q',
+                'surcharge_calculation_mode' => $settings->surcharge_calculation_mode ?: 'sum',
             ],
             'currencies' => $currencies,
         ]);
@@ -41,6 +42,7 @@ class SettingsController extends Controller
             'secondary_color' => ['required', 'regex:/^#(?:[A-Fa-f0-9]{6})$/'],
             'currency_code' => ['required', 'in:GTQ,USD,MXN,EUR'],
             'currency_symbol' => ['required', 'string', 'max:10'],
+            'surcharge_calculation_mode' => ['nullable', 'in:sum,division'],
             'app_logo' => ['nullable', 'image', 'max:2048'],
         ]);
 
@@ -54,12 +56,15 @@ class SettingsController extends Controller
         }
 
         unset($data['app_logo']);
+        if (! array_key_exists('surcharge_calculation_mode', $data) || ! $data['surcharge_calculation_mode']) {
+            $data['surcharge_calculation_mode'] = $settings->surcharge_calculation_mode ?: 'sum';
+        }
 
         $settings->update($data);
 
         return back()->with('success', [
             'title' => 'Configuración actualizada',
-            'description' => 'Se guardaron logo, colores y moneda del sistema.',
+            'description' => 'Se guardaron logo, colores, moneda y recargos del sistema.',
         ]);
     }
 }

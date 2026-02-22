@@ -13,6 +13,7 @@ class AppSetting extends Model
         'secondary_color',
         'currency_code',
         'currency_symbol',
+        'surcharge_calculation_mode',
     ];
 
     public static function current(): self
@@ -23,6 +24,7 @@ class AppSetting extends Model
             'secondary_color' => '#0EA5E9',
             'currency_code' => 'GTQ',
             'currency_symbol' => 'Q',
+            'surcharge_calculation_mode' => 'sum',
         ]);
     }
 

@@ -63,6 +63,7 @@ class HandleInertiaRequests extends Middleware
                         'logo_url' => $settings->logoUrl(),
                         'currency_code' => $settings->currency_code ?: 'GTQ',
                         'currency_symbol' => $settings->currency_symbol ?: 'Q',
+                        'surcharge_calculation_mode' => $settings->surcharge_calculation_mode ?: 'sum',
                     ];
                 },
             ],

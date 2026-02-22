@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AppSetting;
 use App\Models\Category;
 use App\Models\CashMovement;
 use App\Models\CashSession;
@@ -176,6 +177,8 @@ class PosController extends Controller
             'payments.*.bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
             'payments.*.card_pos_terminal_id' => ['nullable', 'integer', 'exists:bank_pos_terminals,id'],
             'payments.*.reference' => ['nullable', 'string', 'max:100'],
+            'payments.*.apply_surcharge' => ['nullable', 'boolean'],
+            'payments.*.surcharge_percent' => ['nullable', 'numeric', 'min:0', 'max:99.99'],
             'payments.*.amount' => ['required_with:payments', 'numeric', 'min:0.01'],
         ]);
 
@@ -195,9 +198,10 @@ class PosController extends Controller
         }
 
         $saleTicket = null;
+        $surchargeMode = AppSetting::current()->surcharge_calculation_mode === 'division' ? 'division' : 'sum';
 
         try {
-            DB::transaction(function () use ($data, $user, $session, &$saleTicket): void {
+            DB::transaction(function () use ($data, $user, $session, &$saleTicket, $surchargeMode): void {
                 $items = collect($data['items']);
                 $productIds = $items->pluck('product_id')->unique()->values();
 
@@ -255,6 +259,8 @@ class PosController extends Controller
                         'bank_account_id' => null,
                         'card_pos_terminal_id' => null,
                         'reference' => null,
+                        'apply_surcharge' => false,
+                        'surcharge_percent' => null,
                         'amount' => $total,
                     ]]);
                 }
@@ -324,9 +330,9 @@ class PosController extends Controller
                     }
                 }
 
-                $paidTotal = round((float) $payments->sum(fn (array $payment) => (float) $payment['amount']), 2);
-                if (abs($paidTotal - round($total, 2)) > 0.01) {
-                    throw new \RuntimeException('La suma de pagos debe ser igual al total de la venta.');
+                $basePaymentsTotal = round((float) $payments->sum(fn (array $payment) => (float) $payment['amount']), 2);
+                if (abs($basePaymentsTotal - round($total, 2)) > 0.01) {
+                    throw new \RuntimeException('La suma base de pagos debe ser igual al total de la venta.');
                 }
 
                 $clientId = isset($data['customer_id']) ? (int) $data['customer_id'] : null;
@@ -379,13 +385,28 @@ class PosController extends Controller
 
                 foreach ($payments as $payment) {
                     $method = (string) $payment['method'];
-                    $amount = round((float) $payment['amount'], 2);
+                    $baseAmount = round((float) $payment['amount'], 2);
                     $bankAccountId = isset($payment['bank_account_id']) ? (int) $payment['bank_account_id'] : null;
                     $cardPosTerminalId = isset($payment['card_pos_terminal_id']) ? (int) $payment['card_pos_terminal_id'] : null;
                     $reference = trim((string) ($payment['reference'] ?? '')) ?: null;
                     $commissionPercent = null;
                     $commissionAmount = null;
                     $netAmount = null;
+                    $applySurcharge = (bool) ($payment['apply_surcharge'] ?? false);
+                    $surchargePercent = $applySurcharge ? round((float) ($payment['surcharge_percent'] ?? 0), 2) : 0.0;
+                    if ($applySurcharge && $surchargePercent <= 0) {
+                        throw new \RuntimeException('Ingresa un porcentaje de recargo válido.');
+                    }
+                    if ($surchargeMode === 'division' && $applySurcharge && $surchargePercent >= 100) {
+                        throw new \RuntimeException('El porcentaje de recargo debe ser menor a 100 para cálculo por división.');
+                    }
+                    $chargedAmount = $baseAmount;
+                    if ($applySurcharge && $surchargePercent > 0) {
+                        $chargedAmount = $surchargeMode === 'division'
+                            ? round($baseAmount / (1 - ($surchargePercent / 100)), 2)
+                            : round($baseAmount * (1 + ($surchargePercent / 100)), 2);
+                    }
+                    $surchargeAmount = round($chargedAmount - $baseAmount, 2);
 
                     if ($method === 'card') {
                         /** @var BankPosTerminal|null $terminal */
@@ -396,8 +417,8 @@ class PosController extends Controller
 
                         $bankAccountId = (int) $terminal->bank_account_id;
                         $commissionPercent = round((float) $terminal->commission_percent, 2);
-                        $commissionAmount = round(($amount * $commissionPercent) / 100, 2);
-                        $netAmount = round($amount - $commissionAmount, 2);
+                        $commissionAmount = round(($chargedAmount * $commissionPercent) / 100, 2);
+                        $netAmount = round($chargedAmount - $commissionAmount, 2);
                         if ($netAmount < 0) {
                             $netAmount = 0.0;
                         }
@@ -411,10 +432,14 @@ class PosController extends Controller
                         'bank_account_id' => $bankAccountId,
                         'card_pos_terminal_id' => $cardPosTerminalId,
                         'reference' => $reference,
+                        'apply_surcharge' => $applySurcharge,
+                        'surcharge_percent' => $applySurcharge ? $surchargePercent : null,
+                        'surcharge_amount' => $applySurcharge ? $surchargeAmount : null,
+                        'base_amount' => $baseAmount,
                         'commission_percent' => $commissionPercent,
                         'commission_amount' => $commissionAmount,
                         'net_amount' => $netAmount,
-                        'amount' => $amount,
+                        'amount' => $chargedAmount,
                     ]);
 
                     if ($method === 'cash') {
@@ -423,7 +448,7 @@ class PosController extends Controller
                             'user_id' => $user->id,
                             'type' => 'sale',
                             'method' => 'cash',
-                            'amount' => $amount,
+                            'amount' => $chargedAmount,
                             'note' => 'Venta ' . $sale->sale_code,
                             'meta' => ['sale_id' => $sale->id],
                         ]);
@@ -440,14 +465,14 @@ class PosController extends Controller
                             throw new \RuntimeException('La cuenta bancaria seleccionada no está disponible.');
                         }
 
-                        $bankAccount->increment('current_balance', $amount);
+                        $bankAccount->increment('current_balance', $chargedAmount);
 
                         BankMovement::create([
                             'bank_account_id' => $bankAccount->id,
                             'user_id' => $user->id,
                             'movement_date' => now()->toDateString(),
                             'type' => 'deposit',
-                            'amount' => $amount,
+                            'amount' => $chargedAmount,
                             'description' => 'Por venta ' . $sale->sale_code . ' · Cliente ' . ($sale->customer_name ?: 'CF'),
                             'reference' => $sale->sale_code,
                         ]);
@@ -516,7 +541,22 @@ class PosController extends Controller
                         'pos' => isset($payment['card_pos_terminal_id'])
                             ? optional($cardPosById->get((int) $payment['card_pos_terminal_id']))->name
                             : null,
-                        'amount' => round((float) $payment['amount'], 2),
+                        'base_amount' => round((float) ($payment['amount'] ?? 0), 2),
+                        'apply_surcharge' => (bool) ($payment['apply_surcharge'] ?? false),
+                        'surcharge_percent' => round((float) ($payment['surcharge_percent'] ?? 0), 2),
+                        'amount' => (function () use ($payment, $surchargeMode): float {
+                            $base = round((float) ($payment['amount'] ?? 0), 2);
+                            $apply = (bool) ($payment['apply_surcharge'] ?? false);
+                            $percent = $apply ? round((float) ($payment['surcharge_percent'] ?? 0), 2) : 0.0;
+                            if (! $apply || $percent <= 0) {
+                                return $base;
+                            }
+                            if ($surchargeMode === 'division') {
+                                return $percent >= 100 ? $base : round($base / (1 - ($percent / 100)), 2);
+                            }
+
+                            return round($base * (1 + ($percent / 100)), 2);
+                        })(),
                     ])->values(),
                 ];
             });

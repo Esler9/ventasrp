@@ -273,6 +273,25 @@
                                     <input v-model.trim="payment.reference" type="text" maxlength="100" :placeholder="payment.method === 'card' ? 'Ref tarjeta *' : 'Referencia'" class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs" />
                                     <button type="button" class="h-8 rounded-md border border-amber-800/60 px-2 text-xs" @click="removePayment(idx)">X</button>
                                 </div>
+                                <div class="grid grid-cols-[auto_minmax(4.5rem,0.5fr)_1fr] items-center gap-1.5">
+                                    <label class="inline-flex items-center gap-1 text-[11px] text-amber-200">
+                                        <input v-model="payment.apply_surcharge" type="checkbox" class="h-3.5 w-3.5 rounded border-amber-700/80 bg-slate-900 text-amber-400" />
+                                        Recargo
+                                    </label>
+                                    <input
+                                        v-model.number="payment.surcharge_percent"
+                                        type="number"
+                                        min="0"
+                                        max="99.99"
+                                        step="0.01"
+                                        :disabled="!payment.apply_surcharge"
+                                        placeholder="%"
+                                        class="h-8 rounded-md border border-amber-800/50 bg-slate-900 px-2 text-xs disabled:opacity-60"
+                                    />
+                                    <p class="truncate text-[11px] text-amber-200/90">
+                                        Cobrado: Q{{ money(chargedAmount(payment)) }}
+                                    </p>
+                                </div>
                                 <select
                                     v-if="payment.method === 'card'"
                                     v-model="payment.card_pos_terminal_id"
@@ -301,10 +320,12 @@
                     <div class="shrink-0 border-t border-slate-800 bg-slate-900 p-4">
                         <p class="text-xs uppercase tracking-wide text-slate-400">Resumen de venta</p>
                     <p class="mt-1 text-5xl font-bold leading-none">Q{{ money(total) }}</p>
-                    <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
+                    <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Base: Q{{ money(paymentsBaseTotal) }}</p>
+                    <p class="mt-1 text-xs text-sky-300">Cobrado: Q{{ money(paymentsChargedTotal) }}</p>
                     <p v-if="hasCardWithoutPosTerminal" class="mt-1 text-xs text-amber-300">Selecciona POS en cada pago con tarjeta.</p>
                     <p v-if="hasTransferWithoutAccount" class="mt-1 text-xs text-amber-300">Selecciona cuenta bancaria para cada transferencia.</p>
                     <p v-if="hasCardWithoutReference" class="mt-1 text-xs text-amber-300">Ingresa referencia en cada pago con tarjeta.</p>
+                    <p v-if="hasInvalidSurchargePercent" class="mt-1 text-xs text-amber-300">Recargo inválido: usa un porcentaje entre 0 y 99.99.</p>
                     <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
                         <button
                             type="button"
@@ -326,7 +347,7 @@
                         <div class="min-w-0">
                             <p class="text-[11px] uppercase tracking-wide text-slate-400">Total ({{ itemsCount }} items)</p>
                             <p class="text-3xl font-bold leading-tight">Q{{ money(total) }}</p>
-                            <p class="mt-0.5 text-[11px]" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
+                            <p class="mt-0.5 text-[11px]" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Base: Q{{ money(paymentsBaseTotal) }}</p>
                         </div>
                         <button
                             type="button"
@@ -453,6 +474,23 @@
                                 <button type="button" class="col-span-1 rounded-lg border border-amber-800/60 text-xs" @click="removePayment(idx)">X</button>
                                 <input v-model.trim="payment.reference" type="text" maxlength="100" :placeholder="payment.method === 'card' ? 'Ref tarjeta *' : 'Referencia'" class="col-span-6 rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm" />
                             </div>
+                            <div class="grid grid-cols-[auto_minmax(5rem,0.55fr)_1fr] items-center gap-2">
+                                <label class="inline-flex items-center gap-1 text-xs text-amber-200">
+                                    <input v-model="payment.apply_surcharge" type="checkbox" class="h-4 w-4 rounded border-amber-700/80 bg-slate-900 text-amber-400" />
+                                    Recargo
+                                </label>
+                                <input
+                                    v-model.number="payment.surcharge_percent"
+                                    type="number"
+                                    min="0"
+                                    max="99.99"
+                                    step="0.01"
+                                    :disabled="!payment.apply_surcharge"
+                                    placeholder="%"
+                                    class="rounded-lg border border-amber-800/50 bg-slate-900 px-2 py-2 text-sm disabled:opacity-60"
+                                />
+                                <p class="truncate text-xs text-amber-200/90">Cobrado: Q{{ money(chargedAmount(payment)) }}</p>
+                            </div>
                             <select
                                 v-if="payment.method === 'card'"
                                 v-model="payment.card_pos_terminal_id"
@@ -481,10 +519,12 @@
                 <div class="border-t border-slate-800 bg-slate-900 px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-3">
                     <p class="text-xs uppercase tracking-wide text-slate-400">Resumen de venta</p>
                     <p class="mt-1 text-4xl font-bold leading-none">Q{{ money(total) }}</p>
-                    <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Pagado: Q{{ money(paymentsTotal) }}</p>
+                    <p class="mt-1 text-xs" :class="paymentsMatch ? 'text-emerald-300' : 'text-rose-300'">Base: Q{{ money(paymentsBaseTotal) }}</p>
+                    <p class="mt-1 text-xs text-sky-300">Cobrado: Q{{ money(paymentsChargedTotal) }}</p>
                     <p v-if="hasCardWithoutPosTerminal" class="mt-1 text-xs text-amber-300">Selecciona POS en cada pago con tarjeta.</p>
                     <p v-if="hasTransferWithoutAccount" class="mt-1 text-xs text-amber-300">Selecciona cuenta bancaria para cada transferencia.</p>
                     <p v-if="hasCardWithoutReference" class="mt-1 text-xs text-amber-300">Ingresa referencia en cada pago con tarjeta.</p>
+                    <p v-if="hasInvalidSurchargePercent" class="mt-1 text-xs text-amber-300">Recargo inválido: usa un porcentaje entre 0 y 99.99.</p>
                     <div v-if="saleForm.errors.sale" class="mt-2 text-xs text-rose-300">{{ saleForm.errors.sale }}</div>
                     <button
                         type="button"
@@ -587,6 +627,9 @@ const filteredProducts = computed(() => products.value.filter((product) => Numbe
 const clientsOptions = ref([...(props.clients || [])]);
 const bankAccounts = computed(() => props.bank_accounts || []);
 const cardPosTerminals = computed(() => props.card_pos_terminals || []);
+const surchargeCalculationMode = computed(() => (
+    page.props.app?.settings?.surcharge_calculation_mode === 'division' ? 'division' : 'sum'
+));
 const quickClientOpen = ref(false);
 const quickClientSaving = ref(false);
 const quickClientError = ref('');
@@ -605,7 +648,15 @@ const saleForm = useForm({
     customer_id: props.defaults.customer_id || null,
     customer_name: props.defaults.customer_name || 'CF',
     items: [],
-    payments: [{ method: 'cash', bank_account_id: null, card_pos_terminal_id: null, reference: '', amount: 0 }],
+    payments: [{
+        method: 'cash',
+        bank_account_id: null,
+        card_pos_terminal_id: null,
+        reference: '',
+        apply_surcharge: false,
+        surcharge_percent: 0,
+        amount: 0,
+    }],
 });
 
 const displaySaleCode = computed(() => saleForm.sale_code || '---');
@@ -717,8 +768,27 @@ const removeItem = (index) => {
 
 const total = computed(() => cart.value.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.price || 0), 0));
 const itemsCount = computed(() => cart.value.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
-const paymentsTotal = computed(() => saleForm.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0));
-const paymentsMatch = computed(() => Math.abs(paymentsTotal.value - total.value) < 0.01);
+const chargedAmount = (payment) => {
+    const base = roundMoney(Number(payment?.amount || 0));
+    const apply = !!payment?.apply_surcharge;
+    const percent = Number(payment?.surcharge_percent || 0);
+    if (!apply || percent <= 0) {
+        return base;
+    }
+
+    if (surchargeCalculationMode.value === 'division') {
+        if (percent >= 100) {
+            return base;
+        }
+        return roundMoney(base / (1 - (percent / 100)));
+    }
+
+    return roundMoney(base * (1 + (percent / 100)));
+};
+
+const paymentsBaseTotal = computed(() => saleForm.payments.reduce((sum, p) => sum + roundMoney(Number(p.amount || 0)), 0));
+const paymentsChargedTotal = computed(() => saleForm.payments.reduce((sum, p) => sum + chargedAmount(p), 0));
+const paymentsMatch = computed(() => Math.abs(paymentsBaseTotal.value - total.value) < 0.01);
 const hasTransferWithoutAccount = computed(() =>
     saleForm.payments.some((payment) => payment.method === 'transfer' && !payment.bank_account_id),
 );
@@ -727,6 +797,9 @@ const hasCardWithoutPosTerminal = computed(() =>
 );
 const hasCardWithoutReference = computed(() =>
     saleForm.payments.some((payment) => payment.method === 'card' && !String(payment.reference || '').trim()),
+);
+const hasInvalidSurchargePercent = computed(() =>
+    saleForm.payments.some((payment) => payment.apply_surcharge && (Number(payment.surcharge_percent) <= 0 || Number(payment.surcharge_percent) >= 100)),
 );
 
 const qtyByProduct = computed(() => {
@@ -777,10 +850,22 @@ watch(
             if (!Object.prototype.hasOwnProperty.call(payment, 'reference')) {
                 payment.reference = '';
             }
+            if (!Object.prototype.hasOwnProperty.call(payment, 'apply_surcharge')) {
+                payment.apply_surcharge = false;
+            }
+            if (!Object.prototype.hasOwnProperty.call(payment, 'surcharge_percent')) {
+                payment.surcharge_percent = 0;
+            }
 
             if (payment.method === 'card') {
                 if (!payment.card_pos_terminal_id && cardPosTerminals.value.length > 0) {
                     payment.card_pos_terminal_id = cardPosTerminals.value[0].id;
+                }
+                if (payment.card_pos_terminal_id) {
+                    const terminal = cardPosTerminals.value.find((item) => Number(item.id) === Number(payment.card_pos_terminal_id));
+                    if (terminal && (!payment.apply_surcharge || Number(payment.surcharge_percent || 0) <= 0)) {
+                        payment.surcharge_percent = Number(terminal.commission_percent || 0);
+                    }
                 }
                 payment.bank_account_id = null;
                 return;
@@ -796,6 +881,9 @@ watch(
 
             payment.bank_account_id = null;
             payment.card_pos_terminal_id = null;
+            if (!payment.apply_surcharge) {
+                payment.surcharge_percent = 0;
+            }
         });
     },
     { deep: true },
@@ -843,7 +931,15 @@ watch(
 );
 
 const addPayment = () => {
-    saleForm.payments.push({ method: 'cash', bank_account_id: null, card_pos_terminal_id: null, reference: '', amount: 0 });
+    saleForm.payments.push({
+        method: 'cash',
+        bank_account_id: null,
+        card_pos_terminal_id: null,
+        reference: '',
+        apply_surcharge: false,
+        surcharge_percent: 0,
+        amount: 0,
+    });
 };
 
 const removePayment = (index) => {
@@ -858,6 +954,7 @@ const canSubmit = computed(() =>
     && !hasCardWithoutPosTerminal.value
     && !hasTransferWithoutAccount.value
     && !hasCardWithoutReference.value
+    && !hasInvalidSurchargePercent.value
     && !saleForm.processing,
 );
 
@@ -876,7 +973,15 @@ const submitSale = () => {
         preserveScroll: true,
         onSuccess: () => {
             cart.value = [];
-            saleForm.payments = [{ method: 'cash', bank_account_id: null, card_pos_terminal_id: null, reference: '', amount: 0 }];
+            saleForm.payments = [{
+                method: 'cash',
+                bank_account_id: null,
+                card_pos_terminal_id: null,
+                reference: '',
+                apply_surcharge: false,
+                surcharge_percent: 0,
+                amount: 0,
+            }];
             saleForm.sale_code = '';
             saleForm.customer_id = null;
             saleForm.customer_name = 'CF';
@@ -960,6 +1065,7 @@ const contentSafeArea = computed(() => ({
 const logoutForm = useForm({});
 const logout = () => logoutForm.post('/logout');
 
+const roundMoney = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 const money = (value) => Number(value || 0).toFixed(2);
 
 const escapeHtml = (value) => String(value ?? '')
@@ -1000,8 +1106,12 @@ const printSaleTicket = () => {
                     ${escapeHtml(payment.method)}
                     ${payment.pos ? `<br><span style="font-size:11px;color:#4b5563;">POS: ${escapeHtml(payment.pos)}</span>` : ''}
                     ${payment.reference ? `<br><span style="font-size:11px;color:#4b5563;">Ref: ${escapeHtml(payment.reference)}</span>` : ''}
+                    ${payment.apply_surcharge ? `<br><span style="font-size:11px;color:#4b5563;">Recargo: ${money(payment.surcharge_percent)}%</span>` : ''}
                 </td>
-                <td style="padding:3px 0;text-align:right;">Q${money(payment.amount)}</td>
+                <td style="padding:3px 0;text-align:right;">
+                    ${payment.apply_surcharge ? `<div style="font-size:11px;color:#4b5563;">Base Q${money(payment.base_amount)}</div>` : ''}
+                    <div>Q${money(payment.amount)}</div>
+                </td>
             </tr>
         `)
         .join('');
