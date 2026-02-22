@@ -154,10 +154,10 @@ const moreItems = computed(() => [
     {
         key: 'banks',
         label: 'Bancos',
-        href: null,
-        enabled: can('banks.view') && false,
-        disabledReason: can('banks.view') ? 'Disponible en la siguiente fase.' : 'Sin permiso para Bancos.',
-        disabledTag: can('banks.view') ? 'Próximamente' : 'Sin permiso',
+        href: '/admin/banks',
+        enabled: can('banks.view'),
+        disabledReason: 'Sin permiso para Bancos.',
+        disabledTag: 'Sin permiso',
     },
     {
         key: 'settings',

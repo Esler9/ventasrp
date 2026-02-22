@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CashController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExpenseController;
+use App\Http\Controllers\Admin\BankController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\AuthController;
@@ -71,6 +72,11 @@ Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
     Route::post('/expenses', [ExpenseController::class, 'store'])->middleware('permission:expenses.create')->name('admin.expenses.store');
     Route::match(['put', 'patch', 'post'], '/expenses/{expense}', [ExpenseController::class, 'update'])->middleware('permission:expenses.create')->name('admin.expenses.update');
     Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->middleware('permission:expenses.create')->name('admin.expenses.destroy');
+    Route::get('/banks', [BankController::class, 'index'])->middleware('permission:banks.view')->name('admin.banks.index');
+    Route::post('/banks/accounts', [BankController::class, 'storeAccount'])->middleware('permission:banks.movements')->name('admin.banks.accounts.store');
+    Route::match(['put', 'patch', 'post'], '/banks/accounts/{account}', [BankController::class, 'updateAccount'])->middleware('permission:banks.movements')->name('admin.banks.accounts.update');
+    Route::post('/banks/movements', [BankController::class, 'storeMovement'])->middleware('permission:banks.movements')->name('admin.banks.movements.store');
+    Route::delete('/banks/movements/{movement}', [BankController::class, 'destroyMovement'])->middleware('permission:banks.movements')->name('admin.banks.movements.destroy');
     Route::get('/reports', [ReportController::class, 'index'])->middleware('permission:reports.view')->name('admin.reports.index');
 
     Route::get('/users', [UserController::class, 'index'])->middleware('permission:users.view')->name('admin.users.index');

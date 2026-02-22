@@ -10,8 +10,10 @@ use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SalePayment;
+use App\Models\BankAccount;
 use App\Models\AppSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -65,6 +67,16 @@ class DashboardController extends Controller
             ->whereIn('method', ['card', 'transfer'])
             ->whereBetween('created_at', [$startMonth, $endMonth])
             ->sum('amount');
+
+        if (Schema::hasTable('bank_accounts')) {
+            $realBankBalance = (float) BankAccount::query()
+                ->where('is_active', true)
+                ->sum('current_balance');
+
+            if ($realBankBalance > 0) {
+                $bankBalance = $realBankBalance;
+            }
+        }
 
         $lowStockProducts = Product::query()
             ->where('stock', '<=', 5)
