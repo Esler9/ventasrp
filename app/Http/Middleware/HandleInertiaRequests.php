@@ -61,6 +61,8 @@ class HandleInertiaRequests extends Middleware
                         'primary_color' => $settings->primary_color,
                         'secondary_color' => $settings->secondary_color,
                         'logo_url' => $settings->logoUrl(),
+                        'currency_code' => $settings->currency_code ?: 'GTQ',
+                        'currency_symbol' => $settings->currency_symbol ?: 'Q',
                     ];
                 },
             ],

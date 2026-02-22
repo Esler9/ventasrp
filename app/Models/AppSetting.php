@@ -11,6 +11,8 @@ class AppSetting extends Model
         'app_logo_path',
         'primary_color',
         'secondary_color',
+        'currency_code',
+        'currency_symbol',
     ];
 
     public static function current(): self
@@ -19,6 +21,8 @@ class AppSetting extends Model
             'app_icon_color' => '#f59e0b',
             'primary_color' => '#0773A4',
             'secondary_color' => '#0EA5E9',
+            'currency_code' => 'GTQ',
+            'currency_symbol' => 'Q',
         ]);
     }
 

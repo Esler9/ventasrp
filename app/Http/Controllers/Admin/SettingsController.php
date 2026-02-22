@@ -15,13 +15,22 @@ class SettingsController extends Controller
     public function index(): Response
     {
         $settings = AppSetting::current();
+        $currencies = [
+            ['code' => 'GTQ', 'symbol' => 'Q', 'label' => 'Quetzales (GTQ)'],
+            ['code' => 'USD', 'symbol' => '$', 'label' => 'Dólares (USD)'],
+            ['code' => 'MXN', 'symbol' => '$', 'label' => 'Pesos Mexicanos (MXN)'],
+            ['code' => 'EUR', 'symbol' => '€', 'label' => 'Euros (EUR)'],
+        ];
 
         return Inertia::render('Admin/Settings', [
             'settings' => [
                 'app_logo_url' => $settings->logoUrl(),
                 'primary_color' => $settings->primary_color,
                 'secondary_color' => $settings->secondary_color,
+                'currency_code' => $settings->currency_code ?: 'GTQ',
+                'currency_symbol' => $settings->currency_symbol ?: 'Q',
             ],
+            'currencies' => $currencies,
         ]);
     }
 
@@ -30,6 +39,8 @@ class SettingsController extends Controller
         $data = $request->validate([
             'primary_color' => ['required', 'regex:/^#(?:[A-Fa-f0-9]{6})$/'],
             'secondary_color' => ['required', 'regex:/^#(?:[A-Fa-f0-9]{6})$/'],
+            'currency_code' => ['required', 'in:GTQ,USD,MXN,EUR'],
+            'currency_symbol' => ['required', 'string', 'max:10'],
             'app_logo' => ['nullable', 'image', 'max:2048'],
         ]);
 
@@ -48,7 +59,7 @@ class SettingsController extends Controller
 
         return back()->with('success', [
             'title' => 'Configuración actualizada',
-            'description' => 'Se guardaron logo y colores de la marca.',
+            'description' => 'Se guardaron logo, colores y moneda del sistema.',
         ]);
     }
 }
