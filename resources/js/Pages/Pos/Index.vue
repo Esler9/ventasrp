@@ -691,7 +691,9 @@ const checkoutDockStyle = computed(() => ({
 }));
 
 const contentSafeArea = computed(() => ({
-    paddingBottom: isDesktop.value ? '1rem' : `calc(7.5rem + ${bottomNavHeight} + env(safe-area-inset-bottom, 0px))`,
+    paddingBottom: isDesktop.value
+        ? `calc(6.5rem + env(safe-area-inset-bottom, 0px))`
+        : `calc(7.5rem + ${bottomNavHeight} + env(safe-area-inset-bottom, 0px))`,
 }));
 
 const logoutForm = useForm({});
