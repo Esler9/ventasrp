@@ -57,7 +57,7 @@
                     :class="{ 'text-amber-200 font-semibold': showMore, 'text-gray-400': !showMore }"
                     @click="showMore = !showMore"
                 >
-                    <i class="fa-solid fa-ellipsis text-base"></i>
+                    <i class="fa-solid fa-bars text-base"></i>
                     <span>Más</span>
                 </button>
             </div>

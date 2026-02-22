@@ -7,10 +7,7 @@
 
         <header class="sticky top-0 z-20 border-b border-slate-800 bg-slate-900/80 px-4 pb-3 pt-4 backdrop-blur">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                    <button type="button" class="flex h-11 w-11 items-center justify-center rounded-full bg-slate-800/80 text-slate-300">
-                        <i class="fa-solid fa-bars"></i>
-                    </button>
+                <div class="flex items-center">
                     <div>
                         <p class="text-xl font-semibold">Nueva Venta #{{ displaySaleCode }}</p>
                         <p class="text-xs text-slate-400">Cliente: {{ selectedClientName }}</p>
@@ -31,7 +28,7 @@
             </div>
         </header>
 
-        <div class="mx-auto max-w-7xl px-4 pb-10 pt-4 lg:pb-6" :style="contentSafeArea">
+        <div class="mx-auto max-w-7xl px-4 pb-10 pt-4 lg:flex lg:h-[calc(100vh-11.5rem)] lg:flex-col lg:overflow-hidden lg:pb-4" :style="contentSafeArea">
             <div class="mb-3 hidden lg:flex lg:justify-end">
                 <button
                     v-if="desktopCheckoutCollapsed"
@@ -43,8 +40,8 @@
                 </button>
             </div>
 
-            <div class="grid gap-4 lg:items-start" :class="desktopCheckoutCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[minmax(0,1fr)_26rem]'">
-                <section class="space-y-4">
+            <div class="grid gap-4 lg:min-h-0 lg:flex-1 lg:items-start" :class="desktopCheckoutCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[minmax(0,1fr)_26rem]'">
+                <section class="space-y-4 lg:flex lg:min-h-0 lg:flex-col lg:space-y-3">
                     <div v-if="!openCashSession" class="rounded-xl border border-rose-700/60 bg-rose-900/20 p-3 text-sm text-rose-200">
                         Debes abrir caja antes de vender.
                         <a href="/admin/cash" class="font-semibold underline">Ir a Caja</a>
@@ -88,7 +85,7 @@
                         </div>
                     </section>
 
-                    <section>
+                    <section class="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
                         <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
                             <article
                                 v-for="product in products"
@@ -144,7 +141,7 @@
                     </section>
                 </section>
 
-                <aside v-if="!desktopCheckoutCollapsed" class="hidden lg:sticky lg:top-24 lg:flex lg:h-[calc(100vh-11.5rem)] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-800 lg:bg-slate-900/95">
+                <aside v-if="!desktopCheckoutCollapsed" class="hidden lg:flex lg:h-full lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-800 lg:bg-slate-900/95">
                     <div class="border-b border-slate-800 p-4">
                         <div class="flex items-center justify-between">
                             <p class="text-xs uppercase tracking-wide text-slate-400">Detalle de venta</p>
@@ -732,7 +729,7 @@ const checkoutDockStyle = computed(() => ({
 
 const contentSafeArea = computed(() => ({
     paddingBottom: isDesktop.value
-        ? `calc(6.5rem + env(safe-area-inset-bottom, 0px))`
+        ? `calc(1rem + env(safe-area-inset-bottom, 0px))`
         : `calc(7.5rem + ${bottomNavHeight} + env(safe-area-inset-bottom, 0px))`,
 }));
 
