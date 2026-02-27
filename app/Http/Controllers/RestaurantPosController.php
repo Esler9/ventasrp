@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AppSetting;
 use App\Models\Category;
+use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\RestaurantAccount;
 use App\Models\RestaurantAccountItem;
@@ -292,7 +293,7 @@ class RestaurantPosController extends Controller
             'kitchen_status' => ['required', Rule::in(['preparing', 'ready', 'served'])],
         ]);
 
-        DB::transaction(function () use ($item, $data): void {
+        DB::transaction(function () use ($item, $data, $request): void {
             $status = (string) $data['kitchen_status'];
             $current = (string) $item->kitchen_status;
 
@@ -319,6 +320,10 @@ class RestaurantPosController extends Controller
             }
             if ($status === 'served' && ! $item->served_at) {
                 $updates['served_at'] = now();
+            }
+
+            if ($status === 'served') {
+                $this->consumeInventoryForServedItem($item, (int) $request->user()->id);
             }
 
             $item->update($updates);
@@ -383,6 +388,74 @@ class RestaurantPosController extends Controller
         $order->update([
             'status' => 'pending',
             'completed_at' => null,
+        ]);
+    }
+
+    private function consumeInventoryForServedItem(RestaurantAccountItem $item, int $userId): void
+    {
+        $item->loadMissing([
+            'product:id,name,stock',
+            'order:id',
+            'product.recipe' => function ($query) {
+                $query->with('items:id,product_recipe_id,ingredient_product_id,quantity');
+            },
+        ]);
+
+        $servedQuantity = max(1, (int) $item->quantity);
+        $recipe = $item->product?->recipe;
+        $recipeItems = collect($recipe?->items ?? [])->filter(fn ($ingredient) => (int) $ingredient->quantity > 0);
+
+        if ($recipe && $recipe->is_active && $recipeItems->isNotEmpty()) {
+            $ingredientIds = $recipeItems->pluck('ingredient_product_id')->map(fn ($id) => (int) $id)->values();
+            $ingredients = Product::query()
+                ->whereIn('id', $ingredientIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            foreach ($recipeItems as $recipeItem) {
+                /** @var Product|null $ingredient */
+                $ingredient = $ingredients->get((int) $recipeItem->ingredient_product_id);
+                $required = (int) $recipeItem->quantity * $servedQuantity;
+
+                if (! $ingredient || (int) $ingredient->stock < $required) {
+                    $name = $ingredient?->name ?: 'insumo';
+                    throw new \RuntimeException("Stock insuficiente de {$name} para entregar esta orden.");
+                }
+            }
+
+            foreach ($recipeItems as $recipeItem) {
+                /** @var Product $ingredient */
+                $ingredient = $ingredients->get((int) $recipeItem->ingredient_product_id);
+                $required = (int) $recipeItem->quantity * $servedQuantity;
+
+                $ingredient->decrement('stock', $required);
+
+                InventoryMovement::create([
+                    'product_id' => $ingredient->id,
+                    'user_id' => $userId,
+                    'type' => 'recipe_served',
+                    'quantity' => -$required,
+                    'note' => 'Consumo receta · Orden #' . ($item->order?->id ?: $item->restaurant_order_id) . ' · ' . ($item->product?->name ?: 'Producto'),
+                ]);
+            }
+
+            return;
+        }
+
+        $product = Product::query()->lockForUpdate()->find((int) $item->product_id);
+        if (! $product || (int) $product->stock < $servedQuantity) {
+            throw new \RuntimeException('Stock insuficiente del producto para marcar como entregado.');
+        }
+
+        $product->decrement('stock', $servedQuantity);
+
+        InventoryMovement::create([
+            'product_id' => $product->id,
+            'user_id' => $userId,
+            'type' => 'restaurant_served',
+            'quantity' => -$servedQuantity,
+            'note' => 'Entrega restaurante · Orden #' . ($item->order?->id ?: $item->restaurant_order_id),
         ]);
     }
 }

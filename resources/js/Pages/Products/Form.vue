@@ -229,6 +229,77 @@
                     </div>
                 </div>
 
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-100">Receta (restaurante)</p>
+                            <p class="text-xs text-gray-400">Descuenta insumos cuando cocina marque el ítem como entregado.</p>
+                        </div>
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-300">
+                            <input v-model="form.recipe_enabled" type="checkbox" class="h-4 w-4 rounded border-gray-700 bg-gray-900 text-amber-400 focus:ring-amber-500" />
+                            Activa
+                        </label>
+                    </div>
+
+                    <div v-if="form.recipe_enabled" class="space-y-3">
+                        <div class="flex justify-end">
+                            <button
+                                type="button"
+                                class="rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-100 hover:bg-gray-800"
+                                @click="addRecipeItem"
+                            >
+                                Agregar insumo
+                            </button>
+                        </div>
+
+                        <div v-if="form.recipe_items.length" class="space-y-2">
+                            <div
+                                v-for="(item, index) in form.recipe_items"
+                                :key="item.id || index"
+                                class="grid gap-2 rounded-xl border border-gray-800 bg-gray-900/60 p-3 md:grid-cols-[minmax(0,1fr)_140px_auto]"
+                            >
+                                <div>
+                                    <label class="text-xs text-gray-400">Insumo</label>
+                                    <select
+                                        v-model.number="item.ingredient_product_id"
+                                        class="mt-1 w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100"
+                                    >
+                                        <option :value="null" disabled>Selecciona insumo</option>
+                                        <option
+                                            v-for="ingredient in ingredientOptions"
+                                            :key="ingredient.id"
+                                            :value="ingredient.id"
+                                        >
+                                            {{ ingredient.name }}{{ ingredient.sku ? ` · ${ingredient.sku}` : '' }} (Stock {{ ingredient.stock }})
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400">Cantidad</label>
+                                    <input
+                                        v-model.number="item.quantity"
+                                        type="number"
+                                        min="1"
+                                        class="mt-1 w-full rounded-lg border border-gray-800 bg-gray-950/80 px-3 py-2 text-sm text-gray-100"
+                                    />
+                                </div>
+                                <div class="flex items-end">
+                                    <button
+                                        type="button"
+                                        class="w-full rounded-lg border border-red-700/60 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-950/20"
+                                        @click="removeRecipeItem(index)"
+                                    >
+                                        Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="rounded-lg border border-dashed border-gray-800 px-4 py-3 text-xs text-gray-400">
+                            Sin insumos en la receta.
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-2">
                     <Link href="/admin/products" class="rounded-lg border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-100 hover:bg-gray-800">
                         Cancelar
@@ -258,6 +329,10 @@ const props = defineProps({
         default: null,
     },
     categories: {
+        type: Array,
+        default: () => [],
+    },
+    ingredient_products: {
         type: Array,
         default: () => [],
     },
@@ -305,7 +380,15 @@ const form = useForm({
         price: p.price,
         is_active: p.is_active,
     })) ?? [],
+    recipe_enabled: props.product?.recipe_enabled ?? false,
+    recipe_items: props.product?.recipe_items?.map((item) => ({
+        id: item.id ?? null,
+        ingredient_product_id: item.ingredient_product_id ?? null,
+        quantity: item.quantity ?? 1,
+    })) ?? [],
 });
+
+const ingredientOptions = computed(() => props.ingredient_products ?? []);
 
 const preview = ref(props.product?.photo_url ?? null);
 
@@ -385,6 +468,18 @@ const addPresentation = () => {
 
 const removePresentation = (index) => {
     form.presentations.splice(index, 1);
+};
+
+const addRecipeItem = () => {
+    form.recipe_items.push({
+        id: null,
+        ingredient_product_id: null,
+        quantity: 1,
+    });
+};
+
+const removeRecipeItem = (index) => {
+    form.recipe_items.splice(index, 1);
 };
 
 const submit = () => {

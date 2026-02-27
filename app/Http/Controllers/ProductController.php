@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductPresentation;
+use App\Models\ProductRecipe;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -67,6 +69,7 @@ class ProductController extends Controller
         return Inertia::render('Products/Form', [
             'product' => null,
             'categories' => $this->categoryOptions(),
+            'ingredient_products' => $this->ingredientOptions(),
         ]);
     }
 
@@ -90,6 +93,10 @@ class ProductController extends Controller
             'presentations.*.factor' => ['required', 'integer', 'min:1'],
             'presentations.*.price' => ['required', 'numeric', 'min:0'],
             'presentations.*.is_active' => ['required', 'boolean'],
+            'recipe_enabled' => ['nullable', 'boolean'],
+            'recipe_items' => ['array'],
+            'recipe_items.*.ingredient_product_id' => ['required_with:recipe_items', 'integer', 'exists:products,id'],
+            'recipe_items.*.quantity' => ['required_with:recipe_items', 'integer', 'min:1'],
         ]);
 
         if ($request->hasFile('photo')) {
@@ -99,11 +106,20 @@ class ProductController extends Controller
 
         $this->ensureSku($data);
         $presentations = $data['presentations'] ?? [];
+        $recipeEnabled = (bool) ($data['recipe_enabled'] ?? false);
+        $recipeItems = $data['recipe_items'] ?? [];
         unset($data['presentations']);
+        unset($data['recipe_enabled'], $data['recipe_items']);
 
         /** @var Product $product */
-        $product = Product::create($data);
-        $this->syncPresentations($product, $presentations);
+        $product = DB::transaction(function () use ($data, $presentations, $recipeEnabled, $recipeItems) {
+            /** @var Product $product */
+            $product = Product::create($data);
+            $this->syncPresentations($product, $presentations);
+            $this->syncRecipe($product, $recipeEnabled, $recipeItems);
+
+            return $product;
+        });
 
         return redirect()
             ->route('products.index')
@@ -138,8 +154,21 @@ class ProductController extends Controller
                     'price',
                     'is_active',
                 ]),
+                'recipe_enabled' => (bool) $product->recipe?->is_active,
+                'recipe_items' => $product->recipe?->items()
+                    ->with('ingredient:id,name,sku')
+                    ->get(['id', 'product_recipe_id', 'ingredient_product_id', 'quantity'])
+                    ->map(fn ($item) => [
+                        'id' => $item->id,
+                        'ingredient_product_id' => $item->ingredient_product_id,
+                        'ingredient_name' => $item->ingredient?->name,
+                        'ingredient_sku' => $item->ingredient?->sku,
+                        'quantity' => $item->quantity,
+                    ])
+                    ->values() ?? [],
             ],
             'categories' => $this->categoryOptions(),
+            'ingredient_products' => $this->ingredientOptions($product->id),
         ]);
     }
 
@@ -164,6 +193,11 @@ class ProductController extends Controller
             'presentations.*.factor' => ['required', 'integer', 'min:1'],
             'presentations.*.price' => ['required', 'numeric', 'min:0'],
             'presentations.*.is_active' => ['required', 'boolean'],
+            'recipe_enabled' => ['nullable', 'boolean'],
+            'recipe_items' => ['array'],
+            'recipe_items.*.id' => ['nullable', 'integer', 'exists:product_recipe_items,id'],
+            'recipe_items.*.ingredient_product_id' => ['required_with:recipe_items', 'integer', 'exists:products,id'],
+            'recipe_items.*.quantity' => ['required_with:recipe_items', 'integer', 'min:1'],
         ]);
 
         if ($request->hasFile('photo')) {
@@ -176,10 +210,16 @@ class ProductController extends Controller
 
         $this->ensureSku($data, $product->id);
         $presentations = $data['presentations'] ?? [];
+        $recipeEnabled = (bool) ($data['recipe_enabled'] ?? false);
+        $recipeItems = $data['recipe_items'] ?? [];
         unset($data['presentations']);
+        unset($data['recipe_enabled'], $data['recipe_items']);
 
-        $product->update($data);
-        $this->syncPresentations($product, $presentations);
+        DB::transaction(function () use ($product, $data, $presentations, $recipeEnabled, $recipeItems): void {
+            $product->update($data);
+            $this->syncPresentations($product, $presentations);
+            $this->syncRecipe($product, $recipeEnabled, $recipeItems);
+        });
 
         return redirect()
             ->route('products.index')
@@ -286,5 +326,73 @@ class ProductController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<int, array{id:int,name:string,sku:?string,stock:int}>
+     */
+    private function ingredientOptions(?int $excludeProductId = null): array
+    {
+        return Product::query()
+            ->where('is_active', true)
+            ->when($excludeProductId, fn ($query) => $query->where('id', '<>', $excludeProductId))
+            ->orderBy('name')
+            ->get(['id', 'name', 'sku', 'stock'])
+            ->map(fn (Product $product) => [
+                'id' => (int) $product->id,
+                'name' => (string) $product->name,
+                'sku' => $product->sku,
+                'stock' => (int) $product->stock,
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function syncRecipe(Product $product, bool $recipeEnabled, array $recipeItems): void
+    {
+        $normalized = collect($recipeItems)
+            ->map(fn (array $item) => [
+                'ingredient_product_id' => (int) ($item['ingredient_product_id'] ?? 0),
+                'quantity' => (int) ($item['quantity'] ?? 0),
+            ])
+            ->filter(fn (array $item) => $item['ingredient_product_id'] > 0 && $item['quantity'] > 0)
+            ->values();
+
+        if (! $recipeEnabled || $normalized->isEmpty()) {
+            ProductRecipe::query()->where('product_id', $product->id)->delete();
+            return;
+        }
+
+        if ($normalized->contains(fn (array $item) => $item['ingredient_product_id'] === (int) $product->id)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'recipe_items' => 'Un producto no puede ser insumo de su propia receta.',
+            ]);
+        }
+
+        $duplicate = $normalized
+            ->pluck('ingredient_product_id')
+            ->duplicates()
+            ->isNotEmpty();
+
+        if ($duplicate) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'recipe_items' => 'No repitas el mismo insumo en la receta.',
+            ]);
+        }
+
+        $recipe = ProductRecipe::query()->updateOrCreate(
+            ['product_id' => $product->id],
+            ['is_active' => true],
+        );
+
+        $ingredientsIds = $normalized->pluck('ingredient_product_id')->values();
+        $recipe->items()->whereNotIn('ingredient_product_id', $ingredientsIds)->delete();
+
+        foreach ($normalized as $item) {
+            $recipe->items()->updateOrCreate(
+                ['ingredient_product_id' => $item['ingredient_product_id']],
+                ['quantity' => $item['quantity']],
+            );
+        }
     }
 }
