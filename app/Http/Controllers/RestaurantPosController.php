@@ -51,9 +51,43 @@ class RestaurantPosController extends Controller
                         ->orWhere('description', 'like', "%{$q}%");
                 });
             })
+            ->with([
+                'recipe' => function ($query) {
+                    $query->with([
+                        'items' => function ($itemsQuery) {
+                            $itemsQuery->with('ingredient:id,stock');
+                        },
+                    ]);
+                },
+            ])
             ->orderBy('name')
-            ->limit(60)
+            ->limit(200)
             ->get(['id', 'category_id', 'name', 'sku', 'price', 'stock', 'unit_label']);
+
+        $availableProducts = $products
+            ->filter(function (Product $product): bool {
+                $recipe = $product->recipe;
+                if ($recipe && $recipe->is_active && $recipe->items->isNotEmpty()) {
+                    $possibleByRecipe = null;
+
+                    foreach ($recipe->items as $recipeItem) {
+                        $required = max(1, (int) $recipeItem->quantity);
+                        $stock = max(0, (int) ($recipeItem->ingredient?->stock ?? 0));
+                        $possible = intdiv($stock, $required);
+                        $possibleByRecipe = $possibleByRecipe === null ? $possible : min($possibleByRecipe, $possible);
+
+                        if ($possibleByRecipe < 1) {
+                            return false;
+                        }
+                    }
+
+                    return (int) ($possibleByRecipe ?? 0) > 0;
+                }
+
+                return (int) $product->stock > 0;
+            })
+            ->take(60)
+            ->values();
 
         $openCashSession = CashSession::query()
             ->with('register:id,name,branch_name')
@@ -104,7 +138,7 @@ class RestaurantPosController extends Controller
                 'id' => $category->id,
                 'name' => $category->name,
             ])->values(),
-            'products' => $products->map(fn (Product $product) => [
+            'products' => $availableProducts->map(fn (Product $product) => [
                 'id' => $product->id,
                 'category_id' => $product->category_id,
                 'name' => $product->name,

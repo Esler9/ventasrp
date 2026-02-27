@@ -228,6 +228,13 @@
                         <div class="md:col-span-3">
                             <label class="text-[11px] text-gray-400">Monto</label>
                             <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-2 py-2 text-sm" />
+                            <button
+                                type="button"
+                                class="mt-1 text-[11px] text-sky-300 underline"
+                                @click="fillRemaining(index)"
+                            >
+                                Completar restante
+                            </button>
                         </div>
 
                         <div v-if="payment.method !== 'cash'" class="md:col-span-2">
@@ -251,13 +258,21 @@
                 <div class="mt-2 flex items-center justify-between">
                     <button type="button" class="rounded-lg border border-gray-700 px-3 py-1.5 text-xs text-gray-200" @click="addPayment">+ Agregar pago</button>
                     <p class="text-xs text-gray-300">
-                        Pagos: Q{{ money(paymentsTotal) }} / Total: Q{{ money(selectedAccountTotal) }}
+                        Pagos: Q{{ money(paymentsTotal) }} / Total: Q{{ money(selectedAccountTotal) }} / Diferencia: Q{{ money(paymentDifference) }}
                     </p>
                 </div>
+                <p v-if="settlementError" class="mt-2 text-xs text-rose-300">{{ settlementError }}</p>
 
                 <div class="mt-4 flex justify-end gap-2">
                     <button type="button" class="rounded-lg border border-gray-700 px-3 py-2 text-sm" @click="settleModalOpen = false">Cancelar</button>
-                    <button type="button" class="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-white" @click="submitSettlement">Cobrar y cerrar</button>
+                    <button
+                        type="button"
+                        class="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        :disabled="!canSubmitSettlement"
+                        @click="submitSettlement"
+                    >
+                        Cobrar y cerrar
+                    </button>
                 </div>
             </div>
         </div>
@@ -324,6 +339,30 @@ const openCashSession = computed(() => props.open_cash_session || null);
 const bankAccounts = computed(() => props.bank_accounts || []);
 const cardPosTerminals = computed(() => props.card_pos_terminals || []);
 const paymentsTotal = computed(() => settleForm.payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
+const paymentDifference = computed(() => Number((selectedAccountTotal.value - paymentsTotal.value).toFixed(2)));
+
+const settlementError = computed(() => {
+    if (!selectedAccount.value) return 'Selecciona una cuenta.';
+    if (!openCashSession.value) return 'Debes abrir caja antes de cobrar.';
+    if (!settleForm.payments.length) return 'Agrega al menos un pago.';
+    if (Math.abs(paymentDifference.value) > 0.01) return 'La suma de pagos debe ser igual al total.';
+
+    const missingTransferAccount = settleForm.payments.some((payment) => payment.method === 'transfer' && !payment.bank_account_id);
+    if (missingTransferAccount) return 'Selecciona la cuenta bancaria para cada transferencia.';
+
+    const missingCardPos = settleForm.payments.some((payment) => payment.method === 'card' && !payment.card_pos_terminal_id);
+    if (missingCardPos) return 'Selecciona POS para cada pago con tarjeta.';
+
+    const missingCardReference = settleForm.payments.some((payment) => payment.method === 'card' && !String(payment.reference || '').trim());
+    if (missingCardReference) return 'Ingresa referencia para cada pago con tarjeta.';
+
+    const invalidAmount = settleForm.payments.some((payment) => Number(payment.amount || 0) <= 0);
+    if (invalidAmount) return 'Todos los pagos deben ser mayores a cero.';
+
+    return '';
+});
+
+const canSubmitSettlement = computed(() => !settlementError.value);
 
 const filteredProducts = computed(() => {
     const q = search.value.trim().toLowerCase();
@@ -431,8 +470,20 @@ const removePayment = (index) => {
     settleForm.payments.splice(index, 1);
 };
 
+const fillRemaining = (index) => {
+    const current = settleForm.payments[index];
+    if (!current) return;
+
+    const othersTotal = settleForm.payments
+        .filter((_, i) => i !== index)
+        .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+
+    const remaining = Number((selectedAccountTotal.value - othersTotal).toFixed(2));
+    current.amount = remaining > 0 ? remaining : 0;
+};
+
 const submitSettlement = () => {
-    if (!selectedAccount.value) return;
+    if (!selectedAccount.value || !canSubmitSettlement.value) return;
 
     router.post(`/pos/restaurant/accounts/${selectedAccount.value.id}/settle`, {
         payments: settleForm.payments.map((payment) => ({
