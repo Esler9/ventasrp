@@ -92,6 +92,13 @@
                         >
                             Crear orden y enviar a cocina
                         </button>
+                        <button
+                            type="button"
+                            class="mt-2 ml-2 rounded-lg border border-emerald-700/60 bg-emerald-900/20 px-3 py-1.5 text-xs font-semibold text-emerald-200"
+                            @click="closeCurrentAccount"
+                        >
+                            Cerrar cuenta
+                        </button>
                     </div>
                     <div v-else class="mb-3 rounded-xl border border-dashed border-gray-700 px-3 py-3 text-sm text-gray-400">
                         Selecciona una mesa y una cuenta para agregar productos.
@@ -286,6 +293,17 @@ const sendCurrentAccountToKitchen = () => {
     if (!selectedAccount.value) return;
 
     router.post(`/pos/restaurant/accounts/${selectedAccount.value.id}/send-kitchen`, {}, {
+        preserveScroll: true,
+    });
+};
+
+const closeCurrentAccount = () => {
+    if (!selectedAccount.value) return;
+
+    const confirmed = window.confirm(`¿Cerrar la cuenta ${selectedAccount.value.label}?`);
+    if (!confirmed) return;
+
+    router.post(`/pos/restaurant/accounts/${selectedAccount.value.id}/close`, {}, {
         preserveScroll: true,
     });
 };

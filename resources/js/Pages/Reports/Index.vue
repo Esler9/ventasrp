@@ -70,6 +70,29 @@
                 </div>
             </section>
 
+            <section v-if="is_restaurant_mode" class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+                <div class="rounded-xl border border-gray-800 bg-gray-950/60 p-3">
+                    <p class="text-xs text-gray-400">Órdenes enviadas</p>
+                    <p class="text-2xl font-semibold text-gray-50">{{ restaurant_summary.orders_sent || 0 }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-800 bg-gray-950/60 p-3">
+                    <p class="text-xs text-gray-400">Ítems entregados</p>
+                    <p class="text-2xl font-semibold text-emerald-300">{{ restaurant_summary.served_items || 0 }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-800 bg-gray-950/60 p-3">
+                    <p class="text-xs text-gray-400">Prom. min por orden</p>
+                    <p class="text-2xl font-semibold text-sky-300">{{ money(restaurant_summary.avg_order_minutes) }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-800 bg-gray-950/60 p-3">
+                    <p class="text-xs text-gray-400">Cuentas abiertas ahora</p>
+                    <p class="text-2xl font-semibold text-amber-200">{{ restaurant_summary.open_accounts || 0 }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-800 bg-gray-950/60 p-3">
+                    <p class="text-xs text-gray-400">Mesas activas ahora</p>
+                    <p class="text-2xl font-semibold text-gray-50">{{ restaurant_summary.active_tables || 0 }}</p>
+                </div>
+            </section>
+
             <section class="grid gap-4 xl:grid-cols-2">
                 <div class="rounded-2xl bg-gray-900/80 p-4 ring-1 ring-black/30">
                     <h2 class="text-sm font-semibold text-gray-100">Ventas por día</h2>
@@ -229,6 +252,8 @@ const props = defineProps({
     top_sellers: { type: Array, default: () => [] },
     top_clients: { type: Array, default: () => [] },
     payments_by_method: { type: Array, default: () => [] },
+    is_restaurant_mode: { type: Boolean, default: false },
+    restaurant_summary: { type: Object, default: () => ({}) },
 });
 
 const filtersForm = reactive({

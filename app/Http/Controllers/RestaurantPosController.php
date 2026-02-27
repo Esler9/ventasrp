@@ -241,6 +241,36 @@ class RestaurantPosController extends Controller
         ]);
     }
 
+    public function closeAccount(Request $request, RestaurantAccount $account): RedirectResponse
+    {
+        $this->ensureRestaurantMode();
+
+        if ($account->status !== 'open') {
+            return back()->withErrors(['restaurant' => 'La cuenta ya está cerrada.']);
+        }
+
+        $pendingWork = RestaurantAccountItem::query()
+            ->where('restaurant_account_id', $account->id)
+            ->whereIn('kitchen_status', ['draft', 'pending', 'preparing', 'ready'])
+            ->exists();
+
+        if ($pendingWork) {
+            return back()->withErrors([
+                'restaurant' => 'No puedes cerrar la cuenta: hay ítems en borrador o pendientes de cocina.',
+            ]);
+        }
+
+        $account->update([
+            'status' => 'closed',
+            'closed_at' => now(),
+        ]);
+
+        return back()->with('success', [
+            'title' => 'Cuenta cerrada',
+            'description' => 'La cuenta fue cerrada correctamente.',
+        ]);
+    }
+
     public function kitchen(Request $request): Response
     {
         $this->ensureRestaurantMode();

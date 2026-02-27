@@ -40,6 +40,7 @@ Route::middleware(['web', 'auth', 'permission:pos.view'])->get('/pos/kitchen', [
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts', [RestaurantPosController::class, 'createAccount'])->name('pos.restaurant.accounts.create');
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts/{account}/items', [RestaurantPosController::class, 'addItem'])->name('pos.restaurant.accounts.items.add');
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts/{account}/send-kitchen', [RestaurantPosController::class, 'sendToKitchen'])->name('pos.restaurant.accounts.send-kitchen');
+Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts/{account}/close', [RestaurantPosController::class, 'closeAccount'])->name('pos.restaurant.accounts.close');
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/items/{item}/status', [RestaurantPosController::class, 'updateKitchenStatus'])->name('pos.restaurant.items.status');
 
 Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {

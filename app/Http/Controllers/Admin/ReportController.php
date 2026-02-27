@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppSetting;
+use App\Models\RestaurantAccount;
+use App\Models\RestaurantAccountItem;
+use App\Models\RestaurantOrder;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalePayment;
@@ -135,6 +139,45 @@ class ReportController extends Controller
             ])
             ->values();
 
+        $isRestaurantMode = (AppSetting::current()->business_mode ?: 'minorista') === 'restaurante';
+        $restaurantSummary = [
+            'orders_sent' => 0,
+            'served_items' => 0,
+            'avg_order_minutes' => 0,
+            'open_accounts' => 0,
+            'active_tables' => 0,
+        ];
+
+        if ($isRestaurantMode) {
+            $ordersBase = RestaurantOrder::query()
+                ->when($dateFrom !== '', fn ($query) => $query->whereDate('sent_at', '>=', $dateFrom))
+                ->when($dateTo !== '', fn ($query) => $query->whereDate('sent_at', '<=', $dateTo));
+
+            $orders = (clone $ordersBase)
+                ->get(['id', 'sent_at', 'completed_at']);
+
+            $durations = $orders
+                ->filter(fn (RestaurantOrder $order) => $order->sent_at && $order->completed_at && $order->completed_at->greaterThan($order->sent_at))
+                ->map(fn (RestaurantOrder $order) => (int) $order->completed_at->diffInMinutes($order->sent_at));
+
+            $restaurantSummary['orders_sent'] = $orders->count();
+            $restaurantSummary['avg_order_minutes'] = $durations->isNotEmpty()
+                ? round($durations->avg(), 2)
+                : 0;
+
+            $servedItemsBase = RestaurantAccountItem::query()
+                ->where('kitchen_status', 'served')
+                ->when($dateFrom !== '', fn ($query) => $query->whereDate('served_at', '>=', $dateFrom))
+                ->when($dateTo !== '', fn ($query) => $query->whereDate('served_at', '<=', $dateTo));
+
+            $restaurantSummary['served_items'] = (int) (clone $servedItemsBase)->sum('quantity');
+            $restaurantSummary['open_accounts'] = (int) RestaurantAccount::query()->where('status', 'open')->count();
+            $restaurantSummary['active_tables'] = (int) RestaurantAccount::query()
+                ->where('status', 'open')
+                ->distinct('restaurant_table_id')
+                ->count('restaurant_table_id');
+        }
+
         return Inertia::render('Reports/Index', [
             'filters' => [
                 'date_from' => $dateFrom,
@@ -154,6 +197,8 @@ class ReportController extends Controller
             'top_sellers' => $topSellers,
             'top_clients' => $topClients,
             'payments_by_method' => $paymentsByMethod,
+            'is_restaurant_mode' => $isRestaurantMode,
+            'restaurant_summary' => $restaurantSummary,
         ]);
     }
 }
