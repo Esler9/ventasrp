@@ -14,6 +14,7 @@ class AppSetting extends Model
         'currency_code',
         'currency_symbol',
         'surcharge_calculation_mode',
+        'business_mode',
     ];
 
     public static function current(): self
@@ -25,6 +26,7 @@ class AppSetting extends Model
             'currency_code' => 'GTQ',
             'currency_symbol' => 'Q',
             'surcharge_calculation_mode' => 'sum',
+            'business_mode' => 'minorista',
         ]);
     }
 

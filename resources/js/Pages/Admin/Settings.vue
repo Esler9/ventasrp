@@ -33,6 +33,15 @@
                         <p class="mt-1 text-xs text-gray-500">Se usa al aplicar recargo en formas de pago.</p>
                     </div>
 
+                    <div>
+                        <label class="text-xs text-gray-400">Modo del sistema</label>
+                        <select v-model="form.business_mode" class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/70 px-3 py-3 text-sm">
+                            <option value="minorista">Minorista</option>
+                            <option value="restaurante">Restaurante</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">Define el tipo de operación principal del negocio.</p>
+                    </div>
+
                     <div class="grid gap-3 sm:grid-cols-2">
                         <div>
                             <label class="text-xs text-gray-400">Moneda</label>
@@ -77,6 +86,7 @@
                     <p class="text-sm font-semibold text-gray-50">VentasRP</p>
                     <p class="mt-1 text-xs text-gray-400">Moneda activa: {{ form.currency_code }} ({{ form.currency_symbol }})</p>
                     <p class="mt-1 text-xs text-gray-400">Recargo: {{ form.surcharge_calculation_mode === 'division' ? 'División' : 'Suma' }}</p>
+                    <p class="mt-1 text-xs text-gray-400">Modo: {{ form.business_mode === 'restaurante' ? 'Restaurante' : 'Minorista' }}</p>
                     <button type="button" class="mt-3 rounded-xl px-3 py-2 text-sm font-semibold text-white" :style="{ backgroundColor: form.primary_color }">
                         Boton primario
                     </button>
@@ -104,6 +114,7 @@ const props = defineProps({
             currency_code: 'GTQ',
             currency_symbol: 'Q',
             surcharge_calculation_mode: 'sum',
+            business_mode: 'minorista',
         }),
     },
     currencies: {
@@ -119,6 +130,7 @@ const form = useForm({
     currency_code: props.settings.currency_code || 'GTQ',
     currency_symbol: props.settings.currency_symbol || 'Q',
     surcharge_calculation_mode: props.settings.surcharge_calculation_mode || 'sum',
+    business_mode: props.settings.business_mode || 'minorista',
 });
 
 const hasErrors = computed(() => Object.keys(form.errors).length > 0);

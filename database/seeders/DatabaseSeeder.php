@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             'secondary_color' => '#0EA5E9',
             'currency_code' => 'GTQ',
             'currency_symbol' => 'Q',
+            'business_mode' => 'minorista',
         ]);
 
         CashRegister::firstOrCreate(
