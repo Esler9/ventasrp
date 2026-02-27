@@ -319,7 +319,7 @@ const firstError = computed(() => {
 
 const selectedTable = computed(() => props.tables.find((table) => Number(table.id) === Number(selectedTableId.value)) || null);
 const selectedAccount = computed(() => selectedTable.value?.accounts?.find((account) => Number(account.id) === Number(selectedAccountId.value)) || null);
-const selectedAccountTotal = computed(() => Number(selectedAccount.value?.total || 0));
+const selectedAccountTotal = computed(() => Number(selectedAccount.value?.served_total ?? selectedAccount.value?.total ?? 0));
 const openCashSession = computed(() => props.open_cash_session || null);
 const bankAccounts = computed(() => props.bank_accounts || []);
 const cardPosTerminals = computed(() => props.card_pos_terminals || []);
@@ -411,7 +411,7 @@ const openSettleModal = () => {
         bank_account_id: null,
         card_pos_terminal_id: null,
         reference: '',
-        amount: Number(selectedAccount.value.total || 0),
+        amount: Number(selectedAccount.value.served_total ?? selectedAccount.value.total ?? 0),
     }];
     settleModalOpen.value = true;
 };

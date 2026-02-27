@@ -151,7 +151,8 @@ class ReportController extends Controller
         if ($isRestaurantMode) {
             $ordersBase = RestaurantOrder::query()
                 ->when($dateFrom !== '', fn ($query) => $query->whereDate('sent_at', '>=', $dateFrom))
-                ->when($dateTo !== '', fn ($query) => $query->whereDate('sent_at', '<=', $dateTo));
+                ->when($dateTo !== '', fn ($query) => $query->whereDate('sent_at', '<=', $dateTo))
+                ->when($sellerId, fn ($query) => $query->where('created_by_user_id', $sellerId));
 
             $orders = (clone $ordersBase)
                 ->get(['id', 'sent_at', 'completed_at']);
@@ -168,7 +169,8 @@ class ReportController extends Controller
             $servedItemsBase = RestaurantAccountItem::query()
                 ->where('kitchen_status', 'served')
                 ->when($dateFrom !== '', fn ($query) => $query->whereDate('served_at', '>=', $dateFrom))
-                ->when($dateTo !== '', fn ($query) => $query->whereDate('served_at', '<=', $dateTo));
+                ->when($dateTo !== '', fn ($query) => $query->whereDate('served_at', '<=', $dateTo))
+                ->when($sellerId, fn ($query) => $query->whereHas('order', fn ($orderQuery) => $orderQuery->where('created_by_user_id', $sellerId)));
 
             $restaurantSummary['served_items'] = (int) (clone $servedItemsBase)->sum('quantity');
             $restaurantSummary['open_accounts'] = (int) RestaurantAccount::query()->where('status', 'open')->count();

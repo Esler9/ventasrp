@@ -22,6 +22,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -115,7 +116,10 @@ class RestaurantPosController extends Controller
             'tables' => $tables->map(function (RestaurantTable $table) {
                 $accounts = $table->accounts->map(function (RestaurantAccount $account) {
                     $itemsCount = (int) $account->items->sum('quantity');
-                    $total = (float) $account->items->sum(fn (RestaurantAccountItem $item) => (float) $item->unit_price * (int) $item->quantity);
+                    $activeItems = $account->items->where('kitchen_status', '!=', 'canceled');
+                    $servedItems = $activeItems->where('kitchen_status', 'served');
+                    $total = (float) $activeItems->sum(fn (RestaurantAccountItem $item) => (float) $item->unit_price * (int) $item->quantity);
+                    $servedTotal = (float) $servedItems->sum(fn (RestaurantAccountItem $item) => (float) $item->unit_price * (int) $item->quantity);
 
                     return [
                         'id' => $account->id,
@@ -124,6 +128,7 @@ class RestaurantPosController extends Controller
                         'opened_at' => optional($account->opened_at)->format('Y-m-d H:i:s'),
                         'items_count' => $itemsCount,
                         'total' => round($total, 2),
+                        'served_total' => round($servedTotal, 2),
                         'draft_items' => $account->items->where('kitchen_status', 'draft')->count(),
                         'pending_items' => $account->items->where('kitchen_status', 'pending')->count(),
                         'preparing_items' => $account->items->where('kitchen_status', 'preparing')->count(),
@@ -399,17 +404,62 @@ class RestaurantPosController extends Controller
             return back()->withErrors(['restaurant' => 'La suma de pagos debe ser igual al total de la cuenta.']);
         }
 
-        DB::transaction(function () use ($account, $request, $servedItems, $payments, $session, $total): void {
+        DB::transaction(function () use ($account, $request, $payments, $session, $total): void {
             $user = $request->user();
+            $lockedAccount = RestaurantAccount::query()
+                ->lockForUpdate()
+                ->find($account->id);
+
+            if (! $lockedAccount || $lockedAccount->status !== 'open' || $lockedAccount->sale_id) {
+                throw ValidationException::withMessages([
+                    'restaurant' => 'La cuenta ya fue liquidada o cerrada por otro usuario.',
+                ]);
+            }
+
+            $pendingWork = RestaurantAccountItem::query()
+                ->where('restaurant_account_id', $lockedAccount->id)
+                ->whereIn('kitchen_status', ['draft', 'pending', 'preparing', 'ready'])
+                ->lockForUpdate()
+                ->exists();
+            if ($pendingWork) {
+                throw ValidationException::withMessages([
+                    'restaurant' => 'No puedes cobrar: hay ítems pendientes de cocina.',
+                ]);
+            }
+
+            $servedItems = RestaurantAccountItem::query()
+                ->with('product:id,name,price,unit_label')
+                ->where('restaurant_account_id', $lockedAccount->id)
+                ->where('kitchen_status', 'served')
+                ->lockForUpdate()
+                ->get();
+            if ($servedItems->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'restaurant' => 'No hay ítems entregados para cobrar.',
+                ]);
+            }
+
+            $servedTotal = round((float) $servedItems->sum(fn (RestaurantAccountItem $item) => (float) $item->unit_price * (int) $item->quantity), 2);
+            if (abs($servedTotal - $total) > 0.01) {
+                throw ValidationException::withMessages([
+                    'restaurant' => 'El total cambió durante el cobro. Reintenta para continuar.',
+                ]);
+            }
+
+            $cardPosById = BankPosTerminal::query()
+                ->with('bankAccount:id,is_active')
+                ->whereIn('id', $payments->where('method', 'card')->pluck('card_pos_terminal_id')->filter()->map(fn ($id) => (int) $id)->unique()->values())
+                ->get()
+                ->keyBy('id');
 
             $sale = Sale::create([
                 'sale_code' => $this->generateRestaurantSaleCode(),
                 'user_id' => $user->id,
                 'customer_id' => null,
-                'customer_name' => trim(($account->table?->name ?? 'Mesa') . ' · ' . ($account->label ?: ('Cuenta #' . $account->id))),
+                'customer_name' => trim(($lockedAccount->table?->name ?? 'Mesa') . ' · ' . ($lockedAccount->label ?: ('Cuenta #' . $lockedAccount->id))),
                 'cash_session_id' => $session->id,
                 'items_count' => (int) $servedItems->sum('quantity'),
-                'total' => $total,
+                'total' => $servedTotal,
             ]);
 
             foreach ($servedItems as $item) {
@@ -438,6 +488,26 @@ class RestaurantPosController extends Controller
                 $bankAccountId = isset($payment['bank_account_id']) ? (int) $payment['bank_account_id'] : null;
                 $cardPosTerminalId = isset($payment['card_pos_terminal_id']) ? (int) $payment['card_pos_terminal_id'] : null;
                 $reference = trim((string) ($payment['reference'] ?? '')) ?: null;
+                $commissionPercent = null;
+                $commissionAmount = null;
+                $netAmount = null;
+
+                if ($method === 'card') {
+                    /** @var BankPosTerminal|null $terminal */
+                    $terminal = $cardPosById->get($cardPosTerminalId);
+                    if (! $terminal || ! $terminal->bankAccount || ! $terminal->bankAccount->is_active) {
+                        throw ValidationException::withMessages([
+                            'restaurant' => 'El POS seleccionado no está disponible.',
+                        ]);
+                    }
+                    $bankAccountId = (int) $terminal->bank_account_id;
+                    $commissionPercent = round((float) $terminal->commission_percent, 2);
+                    $commissionAmount = round(($amount * $commissionPercent) / 100, 2);
+                    $netAmount = round($amount - $commissionAmount, 2);
+                    if ($netAmount < 0) {
+                        $netAmount = 0.0;
+                    }
+                }
 
                 SalePayment::create([
                     'sale_id' => $sale->id,
@@ -451,9 +521,9 @@ class RestaurantPosController extends Controller
                     'surcharge_percent' => null,
                     'surcharge_amount' => null,
                     'base_amount' => $amount,
-                    'commission_percent' => null,
-                    'commission_amount' => null,
-                    'net_amount' => null,
+                    'commission_percent' => $commissionPercent,
+                    'commission_amount' => $commissionAmount,
+                    'net_amount' => $netAmount,
                     'amount' => $amount,
                 ]);
 
@@ -462,31 +532,68 @@ class RestaurantPosController extends Controller
                         'cash_session_id' => $session->id,
                         'user_id' => $user->id,
                         'type' => 'sale',
-                        'method' => 'cash',
-                        'amount' => $amount,
-                        'note' => 'Venta restaurante ' . $sale->sale_code,
-                        'meta' => ['sale_id' => $sale->id, 'restaurant_account_id' => $account->id],
-                    ]);
-                }
+                            'method' => 'cash',
+                            'amount' => $amount,
+                            'note' => 'Venta restaurante ' . $sale->sale_code,
+                            'meta' => ['sale_id' => $sale->id, 'restaurant_account_id' => $lockedAccount->id],
+                        ]);
+                    }
 
                 if ($method === 'transfer' && $bankAccountId) {
                     $bankAccount = BankAccount::query()->lockForUpdate()->find($bankAccountId);
-                    if ($bankAccount && $bankAccount->is_active) {
-                        $bankAccount->increment('current_balance', $amount);
-                        BankMovement::create([
-                            'bank_account_id' => $bankAccount->id,
-                            'user_id' => $user->id,
-                            'movement_date' => now()->toDateString(),
-                            'type' => 'deposit',
-                            'amount' => $amount,
-                            'description' => 'Cobro cuenta restaurante ' . $sale->sale_code,
-                            'reference' => $reference ?: $sale->sale_code,
+                    if (! $bankAccount || ! $bankAccount->is_active) {
+                        throw ValidationException::withMessages([
+                            'restaurant' => 'La cuenta bancaria de transferencia no está disponible.',
                         ]);
                     }
+                    $bankAccount->increment('current_balance', $amount);
+                    BankMovement::create([
+                        'bank_account_id' => $bankAccount->id,
+                        'user_id' => $user->id,
+                        'movement_date' => now()->toDateString(),
+                        'type' => 'deposit',
+                        'amount' => $amount,
+                        'description' => 'Cobro cuenta restaurante ' . $sale->sale_code,
+                        'reference' => $reference ?: $sale->sale_code,
+                    ]);
+                }
+
+                if ($method === 'card') {
+                    /** @var BankPosTerminal|null $terminal */
+                    $terminal = $cardPosById->get((int) $cardPosTerminalId);
+                    if (! $terminal) {
+                        throw ValidationException::withMessages([
+                            'restaurant' => 'El POS seleccionado no está disponible.',
+                        ]);
+                    }
+                    $bankAccount = BankAccount::query()->lockForUpdate()->find($terminal->bank_account_id);
+                    if (! $bankAccount || ! $bankAccount->is_active) {
+                        throw ValidationException::withMessages([
+                            'restaurant' => 'La cuenta bancaria del POS no está disponible.',
+                        ]);
+                    }
+
+                    $depositAmount = round((float) ($netAmount ?? $amount), 2);
+                    $bankAccount->increment('current_balance', $depositAmount);
+                    BankMovement::create([
+                        'bank_account_id' => $bankAccount->id,
+                        'user_id' => $user->id,
+                        'movement_date' => now()->toDateString(),
+                        'type' => 'deposit',
+                        'amount' => $depositAmount,
+                        'description' => sprintf(
+                            'Cobro cuenta restaurante %s · POS %s · Comisión %.2f%% (Q%.2f)',
+                            $sale->sale_code,
+                            $terminal->name,
+                            (float) ($commissionPercent ?? 0),
+                            (float) ($commissionAmount ?? 0)
+                        ),
+                        'reference' => $reference ?: $sale->sale_code,
+                    ]);
                 }
             }
 
-            $account->update([
+            $lockedAccount->update([
                 'sale_id' => $sale->id,
                 'status' => 'closed',
                 'closed_at' => now(),
@@ -750,7 +857,9 @@ class RestaurantPosController extends Controller
 
                 if (! $ingredient || (int) $ingredient->stock < $required) {
                     $name = $ingredient?->name ?: 'insumo';
-                    throw new \RuntimeException("Stock insuficiente de {$name} para entregar esta orden.");
+                    throw ValidationException::withMessages([
+                        'restaurant' => "Stock insuficiente de {$name} para entregar esta orden.",
+                    ]);
                 }
             }
 
@@ -782,7 +891,9 @@ class RestaurantPosController extends Controller
 
         $product = Product::query()->lockForUpdate()->find((int) $item->product_id);
         if (! $product || (int) $product->stock < $servedQuantity) {
-            throw new \RuntimeException('Stock insuficiente del producto para marcar como entregado.');
+            throw ValidationException::withMessages([
+                'restaurant' => 'Stock insuficiente del producto para marcar como entregado.',
+            ]);
         }
 
         $product->decrement('stock', $servedQuantity);
