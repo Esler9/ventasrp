@@ -34,6 +34,13 @@
                                     >
                                         Iniciar preparación
                                     </button>
+                                    <button
+                                        type="button"
+                                        class="mt-1 w-full rounded-md border border-red-700/60 px-2 py-1.5 text-[11px] font-semibold text-red-300"
+                                        @click="cancelItem(item)"
+                                    >
+                                        Anular
+                                    </button>
                                 </div>
                             </div>
                         </article>
@@ -61,6 +68,13 @@
                                         @click="setStatus(item.id, 'ready')"
                                     >
                                         Marcar listo
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="mt-1 w-full rounded-md border border-red-700/60 px-2 py-1.5 text-[11px] font-semibold text-red-300"
+                                        @click="cancelItem(item)"
+                                    >
+                                        Anular
                                     </button>
                                 </div>
                             </div>
@@ -90,6 +104,13 @@
                                     >
                                         Marcar entregado
                                     </button>
+                                    <button
+                                        type="button"
+                                        class="mt-1 w-full rounded-md border border-red-700/60 px-2 py-1.5 text-[11px] font-semibold text-red-300"
+                                        @click="cancelItem(item)"
+                                    >
+                                        Anular
+                                    </button>
                                 </div>
                             </div>
                         </article>
@@ -97,6 +118,22 @@
                     </div>
                 </section>
             </div>
+
+            <section class="rounded-2xl border border-gray-800 bg-gray-900/70 p-3">
+                <h2 class="text-sm font-semibold text-gray-100">Entregados recientes (anulables)</h2>
+                <div class="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    <article v-for="item in servedRecent" :key="`served-${item.id}`" class="rounded-xl border border-gray-800 bg-gray-950/50 p-3">
+                        <p class="text-sm font-semibold text-gray-100">{{ item.quantity }}x {{ item.product_name }}</p>
+                        <p class="text-xs text-gray-400">{{ item.table_name }} · {{ item.account_label }}</p>
+                        <p v-if="item.note" class="mt-1 text-xs text-gray-300">Obs: {{ item.note }}</p>
+                        <p class="mt-1 text-[11px] text-gray-500">{{ item.served_at }}</p>
+                        <button type="button" class="mt-2 w-full rounded-md border border-red-700/60 px-2 py-1.5 text-[11px] font-semibold text-red-300" @click="cancelItem(item)">
+                            Anular y revertir inventario
+                        </button>
+                    </article>
+                    <p v-if="!servedRecent.length" class="text-xs text-gray-500">Sin entregados recientes.</p>
+                </div>
+            </section>
         </div>
     </AppLayout>
 </template>
@@ -108,6 +145,7 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 
 const props = defineProps({
     orders: { type: Array, default: () => [] },
+    served_recent: { type: Array, default: () => [] },
 });
 
 const page = usePage();
@@ -120,10 +158,22 @@ const firstError = computed(() => {
 const pendingOrders = computed(() => props.orders.filter((order) => order.status === 'pending'));
 const preparingOrders = computed(() => props.orders.filter((order) => order.status === 'preparing'));
 const readyOrders = computed(() => props.orders.filter((order) => order.status === 'ready'));
+const servedRecent = computed(() => props.served_recent || []);
 
 const setStatus = (itemId, status) => {
     router.post(`/pos/restaurant/items/${itemId}/status`, {
         kitchen_status: status,
+    }, {
+        preserveScroll: true,
+    });
+};
+
+const cancelItem = (item) => {
+    const reason = window.prompt('Motivo de anulación:');
+    if (!reason || !reason.trim()) return;
+
+    router.post(`/pos/restaurant/items/${item.id}/cancel`, {
+        reason: reason.trim(),
     }, {
         preserveScroll: true,
     });

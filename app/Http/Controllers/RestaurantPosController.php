@@ -13,6 +13,7 @@ use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\RestaurantAccount;
 use App\Models\RestaurantAccountItem;
+use App\Models\RestaurantItemConsumption;
 use App\Models\RestaurantOrder;
 use App\Models\RestaurantTable;
 use App\Models\Sale;
@@ -521,6 +522,26 @@ class RestaurantPosController extends Controller
             ->orderBy('id')
             ->get();
 
+        $servedRecent = RestaurantAccountItem::query()
+            ->with(['product:id,name', 'account:id,restaurant_table_id,sale_id,status,label', 'account.table:id,name'])
+            ->where('kitchen_status', 'served')
+            ->whereHas('account', fn ($query) => $query->where('status', 'open')->whereNull('sale_id'))
+            ->whereDate('served_at', '>=', now()->subDay()->toDateString())
+            ->latest('served_at')
+            ->limit(40)
+            ->get()
+            ->map(fn (RestaurantAccountItem $item) => [
+                'id' => $item->id,
+                'quantity' => (int) $item->quantity,
+                'note' => $item->note,
+                'kitchen_status' => $item->kitchen_status,
+                'product_name' => $item->product?->name ?: 'Producto',
+                'account_label' => $item->account?->label ?: ('Cuenta #' . $item->restaurant_account_id),
+                'table_name' => $item->account?->table?->name ?: 'Mesa',
+                'served_at' => optional($item->served_at)->format('Y-m-d H:i:s'),
+            ])
+            ->values();
+
         return Inertia::render('Pos/Kitchen', [
             'orders' => $orders->map(function (RestaurantOrder $order) {
                 return [
@@ -541,6 +562,7 @@ class RestaurantPosController extends Controller
                     })->values(),
                 ];
             })->values(),
+            'served_recent' => $servedRecent,
         ]);
     }
 
@@ -595,6 +617,44 @@ class RestaurantPosController extends Controller
         ]);
     }
 
+    public function cancelItem(Request $request, RestaurantAccountItem $item): RedirectResponse
+    {
+        $this->ensureRestaurantMode();
+
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $item->loadMissing('account:id,status,sale_id');
+        $account = $item->account;
+        if (! $account || $account->status !== 'open' || $account->sale_id) {
+            return back()->withErrors(['restaurant' => 'No puedes anular ítems de una cuenta ya liquidada/cerrada.']);
+        }
+        if ($item->kitchen_status === 'canceled') {
+            return back()->withErrors(['restaurant' => 'El ítem ya fue anulado.']);
+        }
+
+        DB::transaction(function () use ($item, $request, $data): void {
+            if ($item->kitchen_status === 'served') {
+                $this->reverseConsumptionsForCanceledItem($item, (int) $request->user()->id);
+            }
+
+            $item->update([
+                'kitchen_status' => 'canceled',
+                'canceled_by_user_id' => $request->user()->id,
+                'canceled_at' => now(),
+                'cancel_reason' => trim((string) $data['reason']),
+            ]);
+
+            $this->syncOrderStatus((int) $item->restaurant_order_id);
+        });
+
+        return back()->with('success', [
+            'title' => 'Ítem anulado',
+            'description' => 'El ítem fue anulado correctamente.',
+        ]);
+    }
+
     private function ensureRestaurantMode(): void
     {
         $mode = AppSetting::current()->business_mode ?: 'minorista';
@@ -616,8 +676,11 @@ class RestaurantPosController extends Controller
         }
 
         $statuses = $order->items->pluck('kitchen_status')->values();
+        $activeStatuses = $statuses
+            ->filter(fn (string $status) => $status !== 'canceled')
+            ->values();
 
-        if ($statuses->isEmpty() || $statuses->every(fn (string $status) => $status === 'served')) {
+        if ($activeStatuses->isEmpty() || $activeStatuses->every(fn (string $status) => $status === 'served')) {
             $order->update([
                 'status' => 'completed',
                 'completed_at' => now(),
@@ -626,7 +689,7 @@ class RestaurantPosController extends Controller
             return;
         }
 
-        if ($statuses->contains('ready') && ! $statuses->contains('pending') && ! $statuses->contains('preparing')) {
+        if ($activeStatuses->contains('ready') && ! $activeStatuses->contains('pending') && ! $activeStatuses->contains('preparing')) {
             $order->update([
                 'status' => 'ready',
                 'completed_at' => null,
@@ -635,7 +698,7 @@ class RestaurantPosController extends Controller
             return;
         }
 
-        if ($statuses->contains('preparing') || ($statuses->contains('ready') && $statuses->contains('pending'))) {
+        if ($activeStatuses->contains('preparing') || ($activeStatuses->contains('ready') && $activeStatuses->contains('pending'))) {
             $order->update([
                 'status' => 'preparing',
                 'completed_at' => null,
@@ -659,6 +722,14 @@ class RestaurantPosController extends Controller
                 $query->with('items:id,product_recipe_id,ingredient_product_id,quantity');
             },
         ]);
+
+        $activeConsumptions = RestaurantItemConsumption::query()
+            ->where('restaurant_account_item_id', $item->id)
+            ->whereNull('reversed_at')
+            ->exists();
+        if ($activeConsumptions) {
+            return;
+        }
 
         $servedQuantity = max(1, (int) $item->quantity);
         $recipe = $item->product?->recipe;
@@ -697,6 +768,13 @@ class RestaurantPosController extends Controller
                     'quantity' => -$required,
                     'note' => 'Consumo receta · Orden #' . ($item->order?->id ?: $item->restaurant_order_id) . ' · ' . ($item->product?->name ?: 'Producto'),
                 ]);
+
+                RestaurantItemConsumption::create([
+                    'restaurant_account_item_id' => $item->id,
+                    'product_id' => $ingredient->id,
+                    'quantity' => $required,
+                    'source_type' => 'recipe',
+                ]);
             }
 
             return;
@@ -716,6 +794,57 @@ class RestaurantPosController extends Controller
             'quantity' => -$servedQuantity,
             'note' => 'Entrega restaurante · Orden #' . ($item->order?->id ?: $item->restaurant_order_id),
         ]);
+
+        RestaurantItemConsumption::create([
+            'restaurant_account_item_id' => $item->id,
+            'product_id' => $product->id,
+            'quantity' => $servedQuantity,
+            'source_type' => 'product',
+        ]);
+    }
+
+    private function reverseConsumptionsForCanceledItem(RestaurantAccountItem $item, int $userId): void
+    {
+        $consumptions = RestaurantItemConsumption::query()
+            ->where('restaurant_account_item_id', $item->id)
+            ->whereNull('reversed_at')
+            ->lockForUpdate()
+            ->get();
+
+        if ($consumptions->isEmpty()) {
+            return;
+        }
+
+        $productIds = $consumptions->pluck('product_id')->map(fn ($id) => (int) $id)->unique()->values();
+        $products = Product::query()
+            ->whereIn('id', $productIds)
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        foreach ($consumptions as $consumption) {
+            /** @var Product|null $product */
+            $product = $products->get((int) $consumption->product_id);
+            if (! $product) {
+                continue;
+            }
+
+            $qty = max(1, (int) $consumption->quantity);
+            $product->increment('stock', $qty);
+
+            InventoryMovement::create([
+                'product_id' => $product->id,
+                'user_id' => $userId,
+                'type' => 'restaurant_cancel_restock',
+                'quantity' => $qty,
+                'note' => 'Reverso por anulación ítem restaurante #' . $item->id,
+            ]);
+
+            $consumption->update([
+                'reversed_by_user_id' => $userId,
+                'reversed_at' => now(),
+            ]);
+        }
     }
 
     private function generateRestaurantSaleCode(): string

@@ -43,6 +43,7 @@ Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/res
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts/{account}/close', [RestaurantPosController::class, 'closeAccount'])->name('pos.restaurant.accounts.close');
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts/{account}/settle', [RestaurantPosController::class, 'settleAccount'])->name('pos.restaurant.accounts.settle');
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/items/{item}/status', [RestaurantPosController::class, 'updateKitchenStatus'])->name('pos.restaurant.items.status');
+Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/items/{item}/cancel', [RestaurantPosController::class, 'cancelItem'])->name('pos.restaurant.items.cancel');
 
 Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->middleware('permission:dashboard.view')->name('admin.dashboard');
