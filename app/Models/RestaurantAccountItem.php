@@ -9,6 +9,7 @@ class RestaurantAccountItem extends Model
 {
     protected $fillable = [
         'restaurant_account_id',
+        'restaurant_order_id',
         'product_id',
         'added_by_user_id',
         'quantity',
@@ -33,6 +34,11 @@ class RestaurantAccountItem extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(RestaurantAccount::class, 'restaurant_account_id');
+    }
+
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(RestaurantOrder::class, 'restaurant_order_id');
     }
 
     public function product(): BelongsTo

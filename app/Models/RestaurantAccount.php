@@ -37,4 +37,9 @@ class RestaurantAccount extends Model
     {
         return $this->hasMany(RestaurantAccountItem::class);
     }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(RestaurantOrder::class);
+    }
 }

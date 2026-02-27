@@ -83,14 +83,14 @@
                     <div v-if="selectedAccount" class="mb-3 rounded-xl border border-gray-800 bg-gray-950/40 p-3 text-sm text-gray-200">
                         <p class="font-semibold">Cuenta activa: {{ selectedAccount.label }}</p>
                         <p class="text-xs text-gray-400">
-                            Mesa: {{ selectedTable?.name }} · Pendientes: {{ selectedAccount.pending_items }} · Enviados: {{ selectedAccount.sent_items }} · Listos: {{ selectedAccount.ready_items }}
+                            Mesa: {{ selectedTable?.name }} · Borrador: {{ selectedAccount.draft_items }} · Pendientes: {{ selectedAccount.pending_items }} · En preparación: {{ selectedAccount.preparing_items }} · Listos: {{ selectedAccount.ready_items }} · Órdenes: {{ selectedAccount.orders_count }}
                         </p>
                         <button
                             type="button"
                             class="mt-2 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-black"
                             @click="sendCurrentAccountToKitchen"
                         >
-                            Enviar pendientes a cocina
+                            Crear orden y enviar a cocina
                         </button>
                     </div>
                     <div v-else class="mb-3 rounded-xl border border-dashed border-gray-700 px-3 py-3 text-sm text-gray-400">

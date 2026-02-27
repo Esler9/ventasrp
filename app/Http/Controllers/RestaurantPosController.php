@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\RestaurantAccount;
 use App\Models\RestaurantAccountItem;
+use App\Models\RestaurantOrder;
 use App\Models\RestaurantTable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -93,10 +94,11 @@ class RestaurantPosController extends Controller
                         'opened_at' => optional($account->opened_at)->format('Y-m-d H:i:s'),
                         'items_count' => $itemsCount,
                         'total' => round($total, 2),
+                        'draft_items' => $account->items->where('kitchen_status', 'draft')->count(),
                         'pending_items' => $account->items->where('kitchen_status', 'pending')->count(),
-                        'sent_items' => $account->items->where('kitchen_status', 'sent')->count(),
                         'preparing_items' => $account->items->where('kitchen_status', 'preparing')->count(),
                         'ready_items' => $account->items->where('kitchen_status', 'ready')->count(),
+                        'orders_count' => $account->items->whereNotNull('restaurant_order_id')->pluck('restaurant_order_id')->unique()->count(),
                     ];
                 })->values();
 
@@ -175,12 +177,13 @@ class RestaurantPosController extends Controller
 
         RestaurantAccountItem::create([
             'restaurant_account_id' => $account->id,
+            'restaurant_order_id' => null,
             'product_id' => $product->id,
             'added_by_user_id' => $request->user()->id,
             'quantity' => (int) $data['quantity'],
             'unit_price' => (float) $product->price,
             'note' => trim((string) ($data['note'] ?? '')) ?: null,
-            'kitchen_status' => 'pending',
+            'kitchen_status' => 'draft',
         ]);
 
         return back()->with('success', [
@@ -197,21 +200,43 @@ class RestaurantPosController extends Controller
             return back()->withErrors(['restaurant' => 'La cuenta ya está cerrada.']);
         }
 
-        $updated = RestaurantAccountItem::query()
-            ->where('restaurant_account_id', $account->id)
-            ->where('kitchen_status', 'pending')
-            ->update([
-                'kitchen_status' => 'sent',
+        $result = DB::transaction(function () use ($account, $request): array {
+            $draftItems = RestaurantAccountItem::query()
+                ->where('restaurant_account_id', $account->id)
+                ->where('kitchen_status', 'draft')
+                ->lockForUpdate()
+                ->get(['id']);
+
+            if ($draftItems->isEmpty()) {
+                return ['order_id' => null, 'updated' => 0];
+            }
+
+            $order = RestaurantOrder::create([
+                'restaurant_account_id' => $account->id,
+                'restaurant_table_id' => $account->restaurant_table_id,
+                'created_by_user_id' => $request->user()->id,
+                'status' => 'pending',
                 'sent_at' => now(),
             ]);
 
-        if ($updated === 0) {
-            return back()->withErrors(['restaurant' => 'No hay ítems pendientes para enviar a cocina.']);
+            $updated = RestaurantAccountItem::query()
+                ->whereIn('id', $draftItems->pluck('id'))
+                ->update([
+                    'restaurant_order_id' => $order->id,
+                    'kitchen_status' => 'pending',
+                    'sent_at' => now(),
+                ]);
+
+            return ['order_id' => $order->id, 'updated' => $updated];
+        });
+
+        if (($result['updated'] ?? 0) === 0) {
+            return back()->withErrors(['restaurant' => 'No hay ítems en borrador para enviar a cocina.']);
         }
 
         return back()->with('success', [
             'title' => 'Orden enviada',
-            'description' => "Se enviaron {$updated} ítems a cocina.",
+            'description' => "Orden #{$result['order_id']} enviada con {$result['updated']} ítems a cocina.",
         ]);
     }
 
@@ -219,31 +244,41 @@ class RestaurantPosController extends Controller
     {
         $this->ensureRestaurantMode();
 
-        $items = RestaurantAccountItem::query()
+        $orders = RestaurantOrder::query()
             ->with([
-                'product:id,name',
-                'account:id,restaurant_table_id,label,status',
-                'account.table:id,name',
+                'table:id,name',
+                'account:id,label',
+                'items' => function ($query) {
+                    $query->with('product:id,name')
+                        ->whereIn('kitchen_status', ['pending', 'preparing', 'ready'])
+                        ->orderByRaw("CASE kitchen_status WHEN 'pending' THEN 1 WHEN 'preparing' THEN 2 WHEN 'ready' THEN 3 ELSE 4 END")
+                        ->orderBy('id');
+                },
             ])
-            ->whereIn('kitchen_status', ['sent', 'preparing', 'ready'])
-            ->orderByRaw("CASE kitchen_status WHEN 'sent' THEN 1 WHEN 'preparing' THEN 2 WHEN 'ready' THEN 3 ELSE 4 END")
+            ->whereIn('status', ['pending', 'preparing', 'ready'])
+            ->orderByRaw("CASE status WHEN 'pending' THEN 1 WHEN 'preparing' THEN 2 WHEN 'ready' THEN 3 ELSE 4 END")
             ->orderBy('sent_at')
             ->orderBy('id')
             ->get();
 
         return Inertia::render('Pos/Kitchen', [
-            'items' => $items->map(function (RestaurantAccountItem $item) {
+            'orders' => $orders->map(function (RestaurantOrder $order) {
                 return [
-                    'id' => $item->id,
-                    'quantity' => (int) $item->quantity,
-                    'note' => $item->note,
-                    'kitchen_status' => $item->kitchen_status,
-                    'sent_at' => optional($item->sent_at)->format('Y-m-d H:i:s'),
-                    'started_at' => optional($item->started_at)->format('Y-m-d H:i:s'),
-                    'ready_at' => optional($item->ready_at)->format('Y-m-d H:i:s'),
-                    'product_name' => $item->product?->name ?: 'Producto',
-                    'account_label' => $item->account?->label ?: ('Cuenta #' . $item->restaurant_account_id),
-                    'table_name' => $item->account?->table?->name ?: 'Mesa',
+                    'id' => $order->id,
+                    'status' => $order->status,
+                    'sent_at' => optional($order->sent_at)->format('Y-m-d H:i:s'),
+                    'table_name' => $order->table?->name ?: 'Mesa',
+                    'account_label' => $order->account?->label ?: ('Cuenta #' . $order->restaurant_account_id),
+                    'items_count' => $order->items->count(),
+                    'items' => $order->items->map(function (RestaurantAccountItem $item) {
+                        return [
+                            'id' => $item->id,
+                            'quantity' => (int) $item->quantity,
+                            'note' => $item->note,
+                            'kitchen_status' => $item->kitchen_status,
+                            'product_name' => $item->product?->name ?: 'Producto',
+                        ];
+                    })->values(),
                 ];
             })->values(),
         ]);
@@ -259,6 +294,21 @@ class RestaurantPosController extends Controller
 
         DB::transaction(function () use ($item, $data): void {
             $status = (string) $data['kitchen_status'];
+            $current = (string) $item->kitchen_status;
+
+            $allowed = match ($current) {
+                'pending' => ['preparing'],
+                'preparing' => ['ready'],
+                'ready' => ['served'],
+                default => [],
+            };
+
+            if (! in_array($status, $allowed, true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'kitchen_status' => 'Transición de estado no válida para este ítem.',
+                ]);
+            }
+
             $updates = ['kitchen_status' => $status];
 
             if ($status === 'preparing' && ! $item->started_at) {
@@ -272,6 +322,7 @@ class RestaurantPosController extends Controller
             }
 
             $item->update($updates);
+            $this->syncOrderStatus((int) $item->restaurant_order_id);
         });
 
         return back()->with('success', [
@@ -284,5 +335,54 @@ class RestaurantPosController extends Controller
     {
         $mode = AppSetting::current()->business_mode ?: 'minorista';
         abort_unless($mode === 'restaurante', 404);
+    }
+
+    private function syncOrderStatus(int $orderId): void
+    {
+        if ($orderId <= 0) {
+            return;
+        }
+
+        $order = RestaurantOrder::query()
+            ->with('items:id,restaurant_order_id,kitchen_status')
+            ->find($orderId);
+
+        if (! $order) {
+            return;
+        }
+
+        $statuses = $order->items->pluck('kitchen_status')->values();
+
+        if ($statuses->isEmpty() || $statuses->every(fn (string $status) => $status === 'served')) {
+            $order->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
+
+            return;
+        }
+
+        if ($statuses->contains('ready') && ! $statuses->contains('pending') && ! $statuses->contains('preparing')) {
+            $order->update([
+                'status' => 'ready',
+                'completed_at' => null,
+            ]);
+
+            return;
+        }
+
+        if ($statuses->contains('preparing') || ($statuses->contains('ready') && $statuses->contains('pending'))) {
+            $order->update([
+                'status' => 'preparing',
+                'completed_at' => null,
+            ]);
+
+            return;
+        }
+
+        $order->update([
+            'status' => 'pending',
+            'completed_at' => null,
+        ]);
     }
 }
