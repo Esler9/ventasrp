@@ -11,6 +11,11 @@
                 </a>
             </div>
 
+            <div v-if="!openCashSession" class="rounded-xl border border-rose-700/60 bg-rose-900/20 p-3 text-sm text-rose-200">
+                Debes abrir caja para cobrar y cerrar cuentas.
+                <a href="/admin/cash" class="font-semibold underline">Ir a Caja</a>
+            </div>
+
             <div v-if="firstError" class="rounded-xl border border-rose-700/60 bg-rose-900/20 px-3 py-2 text-sm text-rose-200">
                 {{ firstError }}
             </div>
@@ -95,9 +100,18 @@
                         <button
                             type="button"
                             class="mt-2 ml-2 rounded-lg border border-emerald-700/60 bg-emerald-900/20 px-3 py-1.5 text-xs font-semibold text-emerald-200"
+                            :disabled="!selectedAccount?.can_settle || !openCashSession"
+                            :class="(!selectedAccount?.can_settle || !openCashSession) ? 'opacity-50 cursor-not-allowed' : ''"
+                            @click="openSettleModal"
+                        >
+                            Cobrar y cerrar
+                        </button>
+                        <button
+                            type="button"
+                            class="mt-2 ml-2 rounded-lg border border-emerald-700/60 bg-emerald-900/20 px-3 py-1.5 text-xs font-semibold text-emerald-200"
                             @click="closeCurrentAccount"
                         >
-                            Cerrar cuenta
+                            Cerrar cuenta manual
                         </button>
                     </div>
                     <div v-else class="mb-3 rounded-xl border border-dashed border-gray-700 px-3 py-3 text-sm text-gray-400">
@@ -173,6 +187,80 @@
                 </div>
             </div>
         </div>
+
+        <div v-if="settleModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" @click.self="settleModalOpen = false">
+            <div class="w-full max-w-2xl rounded-2xl border border-gray-800 bg-gray-900 p-4">
+                <h2 class="text-base font-semibold text-gray-100">Cobrar y cerrar cuenta</h2>
+                <p class="mt-1 text-xs text-gray-400">
+                    Cuenta: {{ selectedAccount?.label }} · Total: Q{{ money(selectedAccountTotal) }}
+                </p>
+
+                <div class="mt-3 space-y-2">
+                    <div
+                        v-for="(payment, index) in settleForm.payments"
+                        :key="index"
+                        class="grid gap-2 rounded-lg border border-gray-800 bg-gray-950/50 p-3 md:grid-cols-12"
+                    >
+                        <div class="md:col-span-3">
+                            <label class="text-[11px] text-gray-400">Método</label>
+                            <select v-model="payment.method" class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-2 py-2 text-sm">
+                                <option value="cash">Efectivo</option>
+                                <option value="card">Tarjeta</option>
+                                <option value="transfer">Transferencia</option>
+                            </select>
+                        </div>
+
+                        <div v-if="payment.method === 'card'" class="md:col-span-4">
+                            <label class="text-[11px] text-gray-400">POS</label>
+                            <select v-model="payment.card_pos_terminal_id" class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-2 py-2 text-sm">
+                                <option :value="null">Selecciona POS</option>
+                                <option v-for="terminal in cardPosTerminals" :key="terminal.id" :value="terminal.id">{{ terminal.name }}</option>
+                            </select>
+                        </div>
+                        <div v-if="payment.method === 'transfer'" class="md:col-span-4">
+                            <label class="text-[11px] text-gray-400">Cuenta bancaria</label>
+                            <select v-model="payment.bank_account_id" class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-2 py-2 text-sm">
+                                <option :value="null">Selecciona cuenta</option>
+                                <option v-for="bank in bankAccounts" :key="bank.id" :value="bank.id">{{ bank.label }}</option>
+                            </select>
+                        </div>
+
+                        <div class="md:col-span-3">
+                            <label class="text-[11px] text-gray-400">Monto</label>
+                            <input v-model.number="payment.amount" type="number" min="0.01" step="0.01" class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-2 py-2 text-sm" />
+                        </div>
+
+                        <div v-if="payment.method !== 'cash'" class="md:col-span-2">
+                            <label class="text-[11px] text-gray-400">Referencia</label>
+                            <input v-model.trim="payment.reference" type="text" maxlength="100" class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-2 py-2 text-sm" />
+                        </div>
+
+                        <div class="flex items-end md:col-span-2">
+                            <button
+                                type="button"
+                                class="w-full rounded-lg border border-red-700/60 px-2 py-2 text-xs text-red-300 disabled:opacity-50"
+                                :disabled="settleForm.payments.length <= 1"
+                                @click="removePayment(index)"
+                            >
+                                Quitar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-2 flex items-center justify-between">
+                    <button type="button" class="rounded-lg border border-gray-700 px-3 py-1.5 text-xs text-gray-200" @click="addPayment">+ Agregar pago</button>
+                    <p class="text-xs text-gray-300">
+                        Pagos: Q{{ money(paymentsTotal) }} / Total: Q{{ money(selectedAccountTotal) }}
+                    </p>
+                </div>
+
+                <div class="mt-4 flex justify-end gap-2">
+                    <button type="button" class="rounded-lg border border-gray-700 px-3 py-2 text-sm" @click="settleModalOpen = false">Cancelar</button>
+                    <button type="button" class="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-white" @click="submitSettlement">Cobrar y cerrar</button>
+                </div>
+            </div>
+        </div>
     </AppLayout>
 </template>
 
@@ -186,6 +274,9 @@ const props = defineProps({
     products: { type: Array, default: () => [] },
     tables: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({ q: '', category_id: null }) },
+    bank_accounts: { type: Array, default: () => [] },
+    card_pos_terminals: { type: Array, default: () => [] },
+    open_cash_session: { type: Object, default: null },
 });
 
 const page = usePage();
@@ -199,6 +290,7 @@ const selectedAccountId = ref(props.tables[0]?.accounts?.[0]?.id || null);
 const accountModalOpen = ref(false);
 const addItemModalOpen = ref(false);
 const selectedProductToAdd = ref(null);
+const settleModalOpen = ref(false);
 
 const newAccountForm = reactive({
     split_type: 'unique',
@@ -210,6 +302,16 @@ const addItemForm = reactive({
     note: '',
 });
 
+const settleForm = reactive({
+    payments: [{
+        method: 'cash',
+        bank_account_id: null,
+        card_pos_terminal_id: null,
+        reference: '',
+        amount: 0,
+    }],
+});
+
 const firstError = computed(() => {
     const errors = page.props.errors || {};
     return Object.values(errors)[0] || null;
@@ -217,6 +319,11 @@ const firstError = computed(() => {
 
 const selectedTable = computed(() => props.tables.find((table) => Number(table.id) === Number(selectedTableId.value)) || null);
 const selectedAccount = computed(() => selectedTable.value?.accounts?.find((account) => Number(account.id) === Number(selectedAccountId.value)) || null);
+const selectedAccountTotal = computed(() => Number(selectedAccount.value?.total || 0));
+const openCashSession = computed(() => props.open_cash_session || null);
+const bankAccounts = computed(() => props.bank_accounts || []);
+const cardPosTerminals = computed(() => props.card_pos_terminals || []);
+const paymentsTotal = computed(() => settleForm.payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
 
 const filteredProducts = computed(() => {
     const q = search.value.trim().toLowerCase();
@@ -294,6 +401,52 @@ const sendCurrentAccountToKitchen = () => {
 
     router.post(`/pos/restaurant/accounts/${selectedAccount.value.id}/send-kitchen`, {}, {
         preserveScroll: true,
+    });
+};
+
+const openSettleModal = () => {
+    if (!selectedAccount.value || !selectedAccount.value.can_settle || !openCashSession.value) return;
+    settleForm.payments = [{
+        method: 'cash',
+        bank_account_id: null,
+        card_pos_terminal_id: null,
+        reference: '',
+        amount: Number(selectedAccount.value.total || 0),
+    }];
+    settleModalOpen.value = true;
+};
+
+const addPayment = () => {
+    settleForm.payments.push({
+        method: 'cash',
+        bank_account_id: null,
+        card_pos_terminal_id: null,
+        reference: '',
+        amount: 0,
+    });
+};
+
+const removePayment = (index) => {
+    if (settleForm.payments.length <= 1) return;
+    settleForm.payments.splice(index, 1);
+};
+
+const submitSettlement = () => {
+    if (!selectedAccount.value) return;
+
+    router.post(`/pos/restaurant/accounts/${selectedAccount.value.id}/settle`, {
+        payments: settleForm.payments.map((payment) => ({
+            method: payment.method,
+            bank_account_id: payment.method === 'transfer' ? payment.bank_account_id : null,
+            card_pos_terminal_id: payment.method === 'card' ? payment.card_pos_terminal_id : null,
+            reference: payment.method === 'cash' ? null : (payment.reference || null),
+            amount: Number(payment.amount || 0),
+        })),
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            settleModalOpen.value = false;
+        },
     });
 };
 

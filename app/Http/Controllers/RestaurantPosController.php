@@ -3,13 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppSetting;
+use App\Models\BankAccount;
+use App\Models\BankMovement;
+use App\Models\BankPosTerminal;
 use App\Models\Category;
+use App\Models\CashMovement;
+use App\Models\CashSession;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\RestaurantAccount;
 use App\Models\RestaurantAccountItem;
 use App\Models\RestaurantOrder;
 use App\Models\RestaurantTable;
+use App\Models\Sale;
+use App\Models\SalePayment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +52,27 @@ class RestaurantPosController extends Controller
             ->orderBy('name')
             ->limit(60)
             ->get(['id', 'category_id', 'name', 'sku', 'price', 'stock', 'unit_label']);
+
+        $openCashSession = CashSession::query()
+            ->with('register:id,name,branch_name')
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'open')
+            ->latest('opened_at')
+            ->first();
+
+        $bankAccounts = BankAccount::query()
+            ->where('is_active', true)
+            ->orderBy('bank_name')
+            ->orderBy('account_name')
+            ->get(['id', 'bank_name', 'account_name', 'currency']);
+
+        $cardPosTerminals = BankPosTerminal::query()
+            ->with('bankAccount:id,bank_name,account_name,currency,is_active')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->filter(fn (BankPosTerminal $terminal) => (bool) $terminal->bankAccount?->is_active)
+            ->values();
 
         $tables = RestaurantTable::query()
             ->where('is_active', true)
@@ -100,6 +128,8 @@ class RestaurantPosController extends Controller
                         'preparing_items' => $account->items->where('kitchen_status', 'preparing')->count(),
                         'ready_items' => $account->items->where('kitchen_status', 'ready')->count(),
                         'orders_count' => $account->items->whereNotNull('restaurant_order_id')->pluck('restaurant_order_id')->unique()->count(),
+                        'can_settle' => $account->items->whereIn('kitchen_status', ['draft', 'pending', 'preparing', 'ready'])->count() === 0
+                            && $account->items->where('kitchen_status', 'served')->count() > 0,
                     ];
                 })->values();
 
@@ -112,6 +142,26 @@ class RestaurantPosController extends Controller
                     'accounts' => $accounts,
                 ];
             })->values(),
+            'bank_accounts' => $bankAccounts->map(fn (BankAccount $account) => [
+                'id' => $account->id,
+                'label' => trim($account->bank_name . ' · ' . $account->account_name),
+                'currency' => $account->currency,
+            ])->values(),
+            'card_pos_terminals' => $cardPosTerminals->map(fn (BankPosTerminal $terminal) => [
+                'id' => $terminal->id,
+                'name' => $terminal->name,
+                'commission_percent' => (float) $terminal->commission_percent,
+                'bank_account_id' => $terminal->bank_account_id,
+                'bank_account_label' => trim(($terminal->bankAccount?->bank_name ?? '') . ' · ' . ($terminal->bankAccount?->account_name ?? '')),
+                'currency' => $terminal->bankAccount?->currency ?? 'GTQ',
+            ])->values(),
+            'open_cash_session' => $openCashSession ? [
+                'id' => $openCashSession->id,
+                'register' => $openCashSession->register?->name,
+                'branch' => $openCashSession->register?->branch_name,
+                'opened_at' => optional($openCashSession->opened_at)->format('Y-m-d H:i:s'),
+                'opening_amount' => (float) $openCashSession->opening_amount,
+            ] : null,
         ]);
     }
 
@@ -268,6 +318,185 @@ class RestaurantPosController extends Controller
         return back()->with('success', [
             'title' => 'Cuenta cerrada',
             'description' => 'La cuenta fue cerrada correctamente.',
+        ]);
+    }
+
+    public function settleAccount(Request $request, RestaurantAccount $account): RedirectResponse
+    {
+        $this->ensureRestaurantMode();
+
+        $data = $request->validate([
+            'payments' => ['nullable', 'array'],
+            'payments.*.method' => ['required_with:payments', Rule::in(['cash', 'card', 'transfer'])],
+            'payments.*.bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
+            'payments.*.card_pos_terminal_id' => ['nullable', 'integer', 'exists:bank_pos_terminals,id'],
+            'payments.*.reference' => ['nullable', 'string', 'max:100'],
+            'payments.*.amount' => ['required_with:payments', 'numeric', 'min:0.01'],
+        ]);
+
+        if ($account->status !== 'open') {
+            return back()->withErrors(['restaurant' => 'La cuenta ya está cerrada.']);
+        }
+        if ($account->sale_id) {
+            return back()->withErrors(['restaurant' => 'La cuenta ya fue liquidada.']);
+        }
+
+        $session = CashSession::query()
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'open')
+            ->latest('opened_at')
+            ->first();
+
+        if (! $session) {
+            return back()->withErrors(['restaurant' => 'Debes abrir caja antes de cobrar una cuenta.']);
+        }
+
+        $pendingWork = RestaurantAccountItem::query()
+            ->where('restaurant_account_id', $account->id)
+            ->whereIn('kitchen_status', ['draft', 'pending', 'preparing', 'ready'])
+            ->exists();
+        if ($pendingWork) {
+            return back()->withErrors(['restaurant' => 'No puedes cobrar: hay ítems pendientes de cocina.']);
+        }
+
+        $servedItems = RestaurantAccountItem::query()
+            ->with('product:id,name,price,unit_label')
+            ->where('restaurant_account_id', $account->id)
+            ->where('kitchen_status', 'served')
+            ->get();
+
+        if ($servedItems->isEmpty()) {
+            return back()->withErrors(['restaurant' => 'No hay ítems entregados para cobrar.']);
+        }
+
+        $total = round((float) $servedItems->sum(fn (RestaurantAccountItem $item) => (float) $item->unit_price * (int) $item->quantity), 2);
+        $payments = collect($data['payments'] ?? []);
+        if ($payments->isEmpty()) {
+            $payments = collect([[
+                'method' => 'cash',
+                'bank_account_id' => null,
+                'card_pos_terminal_id' => null,
+                'reference' => null,
+                'amount' => $total,
+            ]]);
+        }
+
+        foreach ($payments as $payment) {
+            if (($payment['method'] ?? null) === 'transfer' && empty($payment['bank_account_id'])) {
+                return back()->withErrors(['restaurant' => 'Selecciona la cuenta bancaria para pagos por transferencia.']);
+            }
+            if (($payment['method'] ?? null) === 'card' && empty($payment['card_pos_terminal_id'])) {
+                return back()->withErrors(['restaurant' => 'Selecciona POS para pagos con tarjeta.']);
+            }
+            if (($payment['method'] ?? null) === 'card' && trim((string) ($payment['reference'] ?? '')) === '') {
+                return back()->withErrors(['restaurant' => 'Ingresa referencia en pagos con tarjeta.']);
+            }
+        }
+
+        $paymentsTotal = round((float) $payments->sum(fn (array $payment) => (float) $payment['amount']), 2);
+        if (abs($paymentsTotal - $total) > 0.01) {
+            return back()->withErrors(['restaurant' => 'La suma de pagos debe ser igual al total de la cuenta.']);
+        }
+
+        DB::transaction(function () use ($account, $request, $servedItems, $payments, $session, $total): void {
+            $user = $request->user();
+
+            $sale = Sale::create([
+                'sale_code' => $this->generateRestaurantSaleCode(),
+                'user_id' => $user->id,
+                'customer_id' => null,
+                'customer_name' => trim(($account->table?->name ?? 'Mesa') . ' · ' . ($account->label ?: ('Cuenta #' . $account->id))),
+                'cash_session_id' => $session->id,
+                'items_count' => (int) $servedItems->sum('quantity'),
+                'total' => $total,
+            ]);
+
+            foreach ($servedItems as $item) {
+                $product = $item->product;
+                $unitPrice = round((float) $item->unit_price, 2);
+                $qty = (int) $item->quantity;
+
+                $sale->items()->create([
+                    'product_id' => $item->product_id,
+                    'product_presentation_id' => null,
+                    'presentation_name' => $product?->unit_label ?: 'Unidad',
+                    'presentation_factor' => 1,
+                    'presentation_price' => $unitPrice,
+                    'presentation_quantity' => $qty,
+                    'quantity' => $qty,
+                    'unit_price' => $unitPrice,
+                    'original_price' => (float) ($product?->price ?? $unitPrice),
+                    'discount_amount' => 0,
+                    'note' => $item->note,
+                ]);
+            }
+
+            foreach ($payments as $payment) {
+                $method = (string) $payment['method'];
+                $amount = round((float) $payment['amount'], 2);
+                $bankAccountId = isset($payment['bank_account_id']) ? (int) $payment['bank_account_id'] : null;
+                $cardPosTerminalId = isset($payment['card_pos_terminal_id']) ? (int) $payment['card_pos_terminal_id'] : null;
+                $reference = trim((string) ($payment['reference'] ?? '')) ?: null;
+
+                SalePayment::create([
+                    'sale_id' => $sale->id,
+                    'cash_session_id' => $session->id,
+                    'user_id' => $user->id,
+                    'method' => $method,
+                    'bank_account_id' => $bankAccountId,
+                    'card_pos_terminal_id' => $cardPosTerminalId,
+                    'reference' => $reference,
+                    'apply_surcharge' => false,
+                    'surcharge_percent' => null,
+                    'surcharge_amount' => null,
+                    'base_amount' => $amount,
+                    'commission_percent' => null,
+                    'commission_amount' => null,
+                    'net_amount' => null,
+                    'amount' => $amount,
+                ]);
+
+                if ($method === 'cash') {
+                    CashMovement::create([
+                        'cash_session_id' => $session->id,
+                        'user_id' => $user->id,
+                        'type' => 'sale',
+                        'method' => 'cash',
+                        'amount' => $amount,
+                        'note' => 'Venta restaurante ' . $sale->sale_code,
+                        'meta' => ['sale_id' => $sale->id, 'restaurant_account_id' => $account->id],
+                    ]);
+                }
+
+                if ($method === 'transfer' && $bankAccountId) {
+                    $bankAccount = BankAccount::query()->lockForUpdate()->find($bankAccountId);
+                    if ($bankAccount && $bankAccount->is_active) {
+                        $bankAccount->increment('current_balance', $amount);
+                        BankMovement::create([
+                            'bank_account_id' => $bankAccount->id,
+                            'user_id' => $user->id,
+                            'movement_date' => now()->toDateString(),
+                            'type' => 'deposit',
+                            'amount' => $amount,
+                            'description' => 'Cobro cuenta restaurante ' . $sale->sale_code,
+                            'reference' => $reference ?: $sale->sale_code,
+                        ]);
+                    }
+                }
+            }
+
+            $account->update([
+                'sale_id' => $sale->id,
+                'status' => 'closed',
+                'closed_at' => now(),
+                'settled_at' => now(),
+                'settled_by_user_id' => $user->id,
+            ]);
+        });
+
+        return back()->with('success', [
+            'title' => 'Cuenta cobrada',
+            'description' => 'Se registró la venta y se cerró la cuenta.',
         ]);
     }
 
@@ -487,5 +716,23 @@ class RestaurantPosController extends Controller
             'quantity' => -$servedQuantity,
             'note' => 'Entrega restaurante · Orden #' . ($item->order?->id ?: $item->restaurant_order_id),
         ]);
+    }
+
+    private function generateRestaurantSaleCode(): string
+    {
+        $prefix = 'R' . now()->format('Ymd');
+        $lastCode = Sale::query()
+            ->where('sale_code', 'like', $prefix . '-%')
+            ->orderByDesc('sale_code')
+            ->value('sale_code');
+
+        if (! $lastCode) {
+            return $prefix . '-0001';
+        }
+
+        $currentNumber = (int) substr((string) $lastCode, strrpos((string) $lastCode, '-') + 1);
+        $nextNumber = str_pad((string) ($currentNumber + 1), 4, '0', STR_PAD_LEFT);
+
+        return $prefix . '-' . $nextNumber;
     }
 }
