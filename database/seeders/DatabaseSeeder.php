@@ -7,6 +7,7 @@ use App\Models\AppSetting;
 use App\Models\Category;
 use App\Models\Client;
 use App\Models\CashRegister;
+use App\Models\RestaurantTable;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -28,6 +29,23 @@ class DatabaseSeeder extends Seeder
             'currency_symbol' => 'Q',
             'business_mode' => 'minorista',
         ]);
+
+        collect([
+            ['code' => 'MESA-01', 'name' => 'Mesa 1', 'is_takeaway' => false, 'sort_order' => 1],
+            ['code' => 'MESA-02', 'name' => 'Mesa 2', 'is_takeaway' => false, 'sort_order' => 2],
+            ['code' => 'MESA-03', 'name' => 'Mesa 3', 'is_takeaway' => false, 'sort_order' => 3],
+            ['code' => 'PARA-LLEVAR', 'name' => 'Para llevar', 'is_takeaway' => true, 'sort_order' => 99],
+        ])->each(function (array $table): void {
+            RestaurantTable::firstOrCreate(
+                ['code' => $table['code']],
+                [
+                    'name' => $table['name'],
+                    'is_takeaway' => $table['is_takeaway'],
+                    'is_active' => true,
+                    'sort_order' => $table['sort_order'],
+                ],
+            );
+        });
 
         CashRegister::firstOrCreate(
             ['name' => 'Caja #01'],

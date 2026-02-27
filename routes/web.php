@@ -11,6 +11,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\RestaurantPosController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,11 @@ Route::get('/admin/login', fn () => redirect('/login'));
 Route::middleware(['web', 'auth', 'permission:pos.view'])->get('/pos', [PosController::class, 'index'])->name('pos');
 
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/sales', [PosController::class, 'store'])->name('pos.sales.store');
+Route::middleware(['web', 'auth', 'permission:pos.view'])->get('/pos/kitchen', [RestaurantPosController::class, 'kitchen'])->name('pos.kitchen');
+Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts', [RestaurantPosController::class, 'createAccount'])->name('pos.restaurant.accounts.create');
+Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts/{account}/items', [RestaurantPosController::class, 'addItem'])->name('pos.restaurant.accounts.items.add');
+Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts/{account}/send-kitchen', [RestaurantPosController::class, 'sendToKitchen'])->name('pos.restaurant.accounts.send-kitchen');
+Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/items/{item}/status', [RestaurantPosController::class, 'updateKitchenStatus'])->name('pos.restaurant.items.status');
 
 Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->middleware('permission:dashboard.view')->name('admin.dashboard');

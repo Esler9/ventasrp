@@ -26,6 +26,10 @@ class PosController extends Controller
 {
     public function index(Request $request): Response
     {
+        if ((AppSetting::current()->business_mode ?: 'minorista') === 'restaurante') {
+            return app(RestaurantPosController::class)->index($request);
+        }
+
         $q = trim((string) $request->query('q', ''));
         $selectedCategoryId = (int) $request->query('category_id', 0);
 
