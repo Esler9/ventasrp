@@ -37,6 +37,9 @@ Route::middleware(['web', 'auth', 'permission:pos.view'])->get('/pos', [PosContr
 
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/sales', [PosController::class, 'store'])->name('pos.sales.store');
 Route::middleware(['web', 'auth', 'permission:pos.view'])->get('/pos/kitchen', [RestaurantPosController::class, 'kitchen'])->name('pos.kitchen');
+Route::middleware(['web', 'auth', 'permission:pos.view'])->get('/pos/restaurant/tables/{table}/workspace', [RestaurantPosController::class, 'workspace'])->name('pos.restaurant.tables.workspace');
+Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/tables', [RestaurantPosController::class, 'storeTable'])->name('pos.restaurant.tables.store');
+Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/tables/{table}', [RestaurantPosController::class, 'updateTable'])->name('pos.restaurant.tables.update');
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts', [RestaurantPosController::class, 'createAccount'])->name('pos.restaurant.accounts.create');
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts/{account}/items', [RestaurantPosController::class, 'addItem'])->name('pos.restaurant.accounts.items.add');
 Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/accounts/{account}/send-kitchen', [RestaurantPosController::class, 'sendToKitchen'])->name('pos.restaurant.accounts.send-kitchen');

@@ -32,6 +32,73 @@ class RestaurantPosController extends Controller
     {
         $this->ensureRestaurantMode();
 
+        return Inertia::render('Pos/Restaurant', $this->buildRestaurantViewData($request));
+    }
+
+    public function workspace(Request $request, RestaurantTable $table): Response
+    {
+        $this->ensureRestaurantMode();
+
+        $payload = $this->buildRestaurantViewData($request);
+        $payload['active_table_id'] = (int) $table->id;
+
+        return Inertia::render('Pos/RestaurantWorkspace', $payload);
+    }
+
+    public function storeTable(Request $request): RedirectResponse
+    {
+        $this->ensureRestaurantMode();
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'code' => ['required', 'string', 'max:40', Rule::unique('restaurant_tables', 'code')],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'is_takeaway' => ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        RestaurantTable::create([
+            'name' => trim((string) $data['name']),
+            'code' => strtoupper(trim((string) $data['code'])),
+            'sort_order' => (int) ($data['sort_order'] ?? 0),
+            'is_takeaway' => (bool) ($data['is_takeaway'] ?? false),
+            'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
+        ]);
+
+        return back()->with('success', [
+            'title' => 'Mesa creada',
+            'description' => 'La mesa fue creada correctamente.',
+        ]);
+    }
+
+    public function updateTable(Request $request, RestaurantTable $table): RedirectResponse
+    {
+        $this->ensureRestaurantMode();
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'code' => ['required', 'string', 'max:40', Rule::unique('restaurant_tables', 'code')->ignore($table->id)],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'is_takeaway' => ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $table->update([
+            'name' => trim((string) $data['name']),
+            'code' => strtoupper(trim((string) $data['code'])),
+            'sort_order' => (int) ($data['sort_order'] ?? 0),
+            'is_takeaway' => (bool) ($data['is_takeaway'] ?? false),
+            'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : $table->is_active,
+        ]);
+
+        return back()->with('success', [
+            'title' => 'Mesa actualizada',
+            'description' => 'Los cambios de la mesa fueron guardados.',
+        ]);
+    }
+
+    private function buildRestaurantViewData(Request $request): array
+    {
         $q = trim((string) $request->query('q', ''));
         $selectedCategoryId = (int) $request->query('category_id', 0);
 
@@ -111,7 +178,6 @@ class RestaurantPosController extends Controller
             ->values();
 
         $tables = RestaurantTable::query()
-            ->where('is_active', true)
             ->with(['accounts' => function ($query) {
                 $query->where('status', 'open')
                     ->with(['items' => function ($itemsQuery) {
@@ -129,7 +195,7 @@ class RestaurantPosController extends Controller
             ->orderBy('name')
             ->get();
 
-        return Inertia::render('Pos/Restaurant', [
+        return [
             'filters' => [
                 'q' => $q,
                 'category_id' => $selectedCategoryId > 0 ? $selectedCategoryId : null,
@@ -177,7 +243,9 @@ class RestaurantPosController extends Controller
                     'id' => $table->id,
                     'name' => $table->name,
                     'code' => $table->code,
+                    'sort_order' => (int) $table->sort_order,
                     'is_takeaway' => (bool) $table->is_takeaway,
+                    'is_active' => (bool) $table->is_active,
                     'status' => $accounts->isEmpty() ? 'free' : 'occupied',
                     'accounts' => $accounts,
                 ];
@@ -202,7 +270,7 @@ class RestaurantPosController extends Controller
                 'opened_at' => optional($openCashSession->opened_at)->format('Y-m-d H:i:s'),
                 'opening_amount' => (float) $openCashSession->opening_amount,
             ] : null,
-        ]);
+        ];
     }
 
     public function createAccount(Request $request): RedirectResponse
@@ -763,7 +831,7 @@ class RestaurantPosController extends Controller
         $this->ensureRestaurantMode();
 
         $data = $request->validate([
-            'action' => ['required', Rule::in(['start', 'complete'])],
+            'action' => ['required', Rule::in(['complete', 'deliver'])],
         ]);
 
         $action = (string) $data['action'];
@@ -784,40 +852,39 @@ class RestaurantPosController extends Controller
 
             $now = now();
 
-            if ($action === 'start') {
-                $pendingItems = $items->where('kitchen_status', 'pending')->values();
+            if ($action === 'complete') {
+                foreach ($items as $item) {
+                    if ($item->kitchen_status === 'pending') {
+                        $item->started_at = $item->started_at ?: $now;
+                    }
 
-                if ($pendingItems->isEmpty()) {
+                    if ($item->kitchen_status === 'pending' || $item->kitchen_status === 'preparing') {
+                        $item->ready_at = $item->ready_at ?: $now;
+                        $item->kitchen_status = 'ready';
+                        $item->save();
+                        $updated++;
+                    }
+                }
+
+                if ($updated === 0) {
                     throw ValidationException::withMessages([
-                        'restaurant' => 'Esta orden ya fue iniciada.',
+                        'restaurant' => 'La orden ya estaba lista para entregar.',
                     ]);
                 }
 
-                foreach ($pendingItems as $item) {
-                    $item->update([
-                        'kitchen_status' => 'preparing',
-                        'started_at' => $item->started_at ?: $now,
-                    ]);
-                }
-
-                $updated = $pendingItems->count();
                 $this->syncOrderStatus((int) $order->id);
-
                 return;
             }
 
-            foreach ($items as $item) {
-                if ($item->kitchen_status === 'pending') {
-                    $item->started_at = $item->started_at ?: $now;
-                    $item->ready_at = $item->ready_at ?: $now;
-                    $item->served_at = $item->served_at ?: $now;
-                } elseif ($item->kitchen_status === 'preparing') {
-                    $item->ready_at = $item->ready_at ?: $now;
-                    $item->served_at = $item->served_at ?: $now;
-                } elseif ($item->kitchen_status === 'ready') {
-                    $item->served_at = $item->served_at ?: $now;
-                }
+            $notReadyItems = $items->whereIn('kitchen_status', ['pending', 'preparing'])->values();
+            if ($notReadyItems->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'restaurant' => 'Completa la orden antes de entregar.',
+                ]);
+            }
 
+            foreach ($items as $item) {
+                $item->served_at = $item->served_at ?: $now;
                 $item->kitchen_status = 'served';
                 $item->save();
                 $this->consumeInventoryForServedItem($item, (int) $request->user()->id);
@@ -827,16 +894,16 @@ class RestaurantPosController extends Controller
             $this->syncOrderStatus((int) $order->id);
         });
 
-        if ($action === 'start') {
+        if ($action === 'complete') {
             return back()->with('success', [
-                'title' => 'Orden iniciada',
-                'description' => "Se iniciaron {$updated} ítems de la orden #{$order->id}.",
+                'title' => 'Orden completada',
+                'description' => "Se marcaron {$updated} ítems como listos en la orden #{$order->id}.",
             ]);
         }
 
         return back()->with('success', [
-            'title' => 'Orden completada',
-            'description' => "Se completaron {$updated} ítems de la orden #{$order->id}.",
+            'title' => 'Orden entregada',
+            'description' => "Se entregaron {$updated} ítems de la orden #{$order->id}.",
         ]);
     }
 

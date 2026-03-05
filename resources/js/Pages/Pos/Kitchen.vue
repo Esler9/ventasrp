@@ -70,16 +70,16 @@
                                 <div
                                     v-for="item in order.items"
                                     :key="item.id"
-                                    class="rounded-xl border border-gray-800 bg-gray-900/70 p-2"
+                                    class="cursor-pointer rounded-xl border border-gray-800 bg-gray-900/70 p-2 transition-colors hover:bg-gray-900/90"
+                                    @click="toggleItemCheck(order.id, item.id)"
                                 >
                                     <div class="flex items-start gap-2">
                                         <input
                                             type="checkbox"
-                                            class="mt-0.5 h-4 w-4 rounded border-gray-700 bg-gray-950/80 text-sky-500"
+                                            class="pointer-events-none mt-0.5 h-4 w-4 rounded border-gray-700 bg-gray-950/80 text-sky-500"
                                             :checked="isItemChecked(order.id, item.id)"
-                                            @change="toggleItemCheck(order.id, item.id, $event.target.checked)"
                                         />
-                                        <div class="min-w-0 flex-1">
+                                        <div class="min-w-0 flex-1 pr-6">
                                             <p class="text-sm font-semibold" :class="isItemChecked(order.id, item.id) ? 'text-gray-400 line-through' : 'text-gray-100'">
                                                 {{ item.quantity }}x {{ item.product_name }}
                                             </p>
@@ -87,15 +87,13 @@
                                                 • {{ item.note }}
                                             </p>
                                         </div>
-                                    </div>
-
-                                    <div class="mt-2 grid gap-1">
                                         <button
                                             type="button"
-                                            class="rounded-md border border-red-700/60 px-2 py-1.5 text-[11px] font-semibold text-red-300"
-                                            @click="cancelItem(item)"
+                                            class="h-5 w-5 rounded text-xs font-bold leading-none text-red-300 hover:bg-red-500/20 hover:text-red-200"
+                                            title="Anular ítem"
+                                            @click.stop="cancelItem(item)"
                                         >
-                                            Anular
+                                            X
                                         </button>
                                     </div>
                                 </div>
@@ -185,7 +183,7 @@ const stations = [
 onMounted(() => {
     timer = window.setInterval(() => {
         nowTs.value = Date.now();
-    }, 30000);
+    }, 10000);
 });
 
 onBeforeUnmount(() => {
@@ -244,22 +242,27 @@ const orderTimeColor = (status) => ({
 });
 
 const orderAction = (order) => {
-    if (order.status === 'pending') {
-        return {
-            action: 'start',
-            label: 'Iniciar Orden',
-            className: 'bg-sky-500 text-white hover:bg-sky-400',
-            disabled: false,
-        };
-    }
+    const hasPendingOrPreparing = order.items.some((item) => item.kitchen_status === 'pending' || item.kitchen_status === 'preparing');
+    const hasReady = order.items.some((item) => item.kitchen_status === 'ready');
+    const allChecked = allItemsChecked(order);
 
-    if (order.status === 'preparing' || order.status === 'ready') {
-        const allChecked = allItemsChecked(order);
+    if (hasPendingOrPreparing) {
         return {
             action: 'complete',
             label: allChecked ? 'Completar Orden' : 'Marca todos para completar',
             className: allChecked
                 ? 'bg-emerald-500 text-white hover:bg-emerald-400'
+                : 'bg-gray-800 text-gray-400 cursor-not-allowed',
+            disabled: !allChecked,
+        };
+    }
+
+    if (hasReady) {
+        return {
+            action: 'deliver',
+            label: allChecked ? 'Entregar' : 'Marca todos para entregar',
+            className: allChecked
+                ? 'bg-amber-400 text-black hover:bg-amber-300'
                 : 'bg-gray-800 text-gray-400 cursor-not-allowed',
             disabled: !allChecked,
         };
@@ -272,11 +275,12 @@ const itemCheckKey = (orderId, itemId) => `${orderId}:${itemId}`;
 
 const isItemChecked = (orderId, itemId) => Boolean(checkedItems.value[itemCheckKey(orderId, itemId)]);
 
-const toggleItemCheck = (orderId, itemId, checked) => {
+const toggleItemCheck = (orderId, itemId) => {
     const key = itemCheckKey(orderId, itemId);
+    const next = !checkedItems.value[key];
     checkedItems.value = {
         ...checkedItems.value,
-        [key]: checked,
+        [key]: next,
     };
 };
 
@@ -286,9 +290,25 @@ const allItemsChecked = (order) => order.items.length > 0 && checkedItemsCount(o
 
 const minutesElapsed = (value) => {
     if (!value) return 0;
-    const ts = Date.parse(value.replace(' ', 'T'));
+    const ts = parseSqlDateTime(value);
     if (Number.isNaN(ts)) return 0;
     return Math.max(0, Math.floor((nowTs.value - ts) / 60000));
+};
+
+const parseSqlDateTime = (value) => {
+    const normalized = String(value).trim();
+    const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) return Number.NaN;
+
+    const [, y, m, d, hh, mm, ss] = match;
+    return new Date(
+        Number(y),
+        Number(m) - 1,
+        Number(d),
+        Number(hh),
+        Number(mm),
+        Number(ss || 0),
+    ).getTime();
 };
 
 const elapsedLabel = (value) => {
@@ -300,7 +320,7 @@ const elapsedLabel = (value) => {
 };
 
 const setOrderStatus = (order, action) => {
-    if (action === 'complete' && !allItemsChecked(order)) return;
+    if (!allItemsChecked(order)) return;
 
     router.post(`/pos/restaurant/orders/${order.id}/status`, {
         action,
