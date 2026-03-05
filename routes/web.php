@@ -48,6 +48,7 @@ Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/res
 Route::middleware(['web', 'auth', 'permission:pos.view'])->post('/pos/restaurant/items/{item}/status', [RestaurantPosController::class, 'updateKitchenStatus'])->name('pos.restaurant.items.status');
 Route::middleware(['web', 'auth', 'permission:pos.view'])->post('/pos/restaurant/orders/{order}/status', [RestaurantPosController::class, 'updateKitchenOrderStatus'])->name('pos.restaurant.orders.status');
 Route::middleware(['web', 'auth', 'permission:pos.view'])->post('/pos/restaurant/items/{item}/cancel', [RestaurantPosController::class, 'cancelItem'])->name('pos.restaurant.items.cancel');
+Route::middleware(['web', 'auth', 'permission:pos.create_sale'])->post('/pos/restaurant/items/{item}/remove-draft', [RestaurantPosController::class, 'removeDraftItem'])->name('pos.restaurant.items.remove-draft');
 
 Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->middleware('permission:dashboard.view')->name('admin.dashboard');

@@ -4,7 +4,7 @@
             <div class="rounded-2xl border border-gray-800 bg-gray-900/70 p-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <p class="text-xs uppercase tracking-wide text-gray-400">New Order</p>
+                        <p class="text-xs uppercase tracking-wide text-gray-400">Nueva orden</p>
                         <h1 class="text-xl font-semibold text-gray-100">
                             {{ selectedTable ? selectedTable.name : 'Mesa' }}
                         </h1>
@@ -105,16 +105,16 @@
                     </div>
                 </section>
 
-                <aside class="rounded-2xl border border-gray-800 bg-gray-900/70 p-3">
+                <aside class="hidden rounded-2xl border border-gray-800 bg-gray-900/70 p-3 lg:block">
                     <div class="mb-3 flex items-center justify-between">
-                        <h2 class="text-lg font-semibold text-gray-100">Order Summary</h2>
+                        <h2 class="text-lg font-semibold text-gray-100">Resumen de orden</h2>
                         <span class="rounded-full bg-sky-500/20 px-2 py-1 text-[11px] font-semibold text-sky-200">
                             {{ selectedTable?.code || selectedTable?.name || 'Mesa' }}
                         </span>
                     </div>
 
                     <div v-if="selectedAccount" class="space-y-2">
-                        <article v-for="item in groupedAccountItems" :key="item.key" class="rounded-xl border border-gray-800 bg-gray-950/50 p-2.5">
+                        <article v-for="item in accountItems" :key="item.id" class="rounded-xl border border-gray-800 bg-gray-950/50 p-2.5">
                             <div class="flex items-start justify-between gap-2">
                                 <div class="flex min-w-0 flex-1 gap-2.5">
                                     <div class="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-800">
@@ -133,6 +133,14 @@
                                     <div class="mt-1 flex items-center gap-2 text-[11px]">
                                         <span class="rounded-full px-2 py-0.5" :class="statusPill(item.kitchen_status)">{{ statusLabel(item.kitchen_status) }}</span>
                                         <span class="text-gray-400">x{{ item.quantity }}</span>
+                                        <button
+                                            v-if="item.kitchen_status === 'draft'"
+                                            type="button"
+                                            class="rounded-md border border-rose-700/60 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300"
+                                            @click="removeDraftItem(item)"
+                                        >
+                                            Quitar
+                                        </button>
                                     </div>
                                 </div>
                                 </div>
@@ -141,7 +149,121 @@
                         </article>
 
                         <div v-if="latestAccountNote" class="rounded-xl border border-dashed border-gray-700 bg-gray-950/30 p-3 text-xs text-gray-300">
-                            <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Custom Request</p>
+                            <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Solicitud especial</p>
+                            <p>{{ latestAccountNote }}</p>
+                        </div>
+                    </div>
+
+                    <p v-else class="rounded-xl border border-dashed border-gray-700 px-3 py-4 text-sm text-gray-400">
+                        Selecciona una cuenta para comenzar a agregar productos.
+                    </p>
+
+                    <div class="mt-4 space-y-1 border-t border-gray-800 pt-3 text-sm">
+                        <div class="flex items-center justify-between text-gray-300">
+                            <span>Subtotal</span>
+                            <span>Q{{ money(selectedAccountSubtotal) }}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-gray-300">
+                            <span>Servido</span>
+                            <span>Q{{ money(selectedAccountServedTotal) }}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-base font-semibold text-gray-100">
+                            <span>Total</span>
+                            <span>Q{{ money(selectedAccountTotal) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 grid gap-2">
+                        <button
+                            type="button"
+                            class="h-12 rounded-xl bg-sky-500 px-4 text-base font-semibold text-white disabled:opacity-40"
+                            :disabled="!selectedAccount"
+                            @click="sendCurrentAccountToKitchen"
+                        >
+                            Enviar orden a cocina
+                        </button>
+                        <button
+                            type="button"
+                            class="h-12 rounded-xl bg-emerald-500 px-4 text-base font-semibold text-white disabled:opacity-40"
+                            :disabled="!selectedAccount?.can_settle || !openCashSession"
+                            @click="openSettleModal"
+                        >
+                            Cobrar y cerrar
+                        </button>
+                        <button
+                            type="button"
+                            class="h-12 rounded-xl border border-gray-700 px-4 text-base text-gray-200 disabled:opacity-40"
+                            :disabled="!selectedAccount"
+                            @click="closeCurrentAccount"
+                        >
+                            Cerrar cuenta manual
+                        </button>
+                    </div>
+                </aside>
+            </div>
+
+            <button
+                type="button"
+                class="fixed bottom-24 right-4 z-40 h-14 rounded-2xl bg-sky-500 px-5 text-sm font-semibold text-white shadow-lg lg:hidden"
+                @click="showMobileSummary = true"
+            >
+                Resumen
+            </button>
+
+            <div
+                v-if="showMobileSummary"
+                class="fixed inset-0 z-50 bg-black/65 p-3 lg:hidden"
+                @click.self="showMobileSummary = false"
+            >
+                <aside class="mx-auto mt-10 max-h-[82vh] w-full max-w-md overflow-y-auto rounded-2xl border border-gray-800 bg-gray-900 p-3">
+                    <div class="mb-3 flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-gray-100">Resumen de orden</h2>
+                        <button type="button" class="h-9 w-9 rounded-lg border border-gray-700 text-gray-200" @click="showMobileSummary = false">✕</button>
+                    </div>
+                    <div class="mb-3 flex items-center justify-between">
+                        <span class="text-xs text-gray-400">Mesa / cuenta activa</span>
+                        <span class="rounded-full bg-sky-500/20 px-2 py-1 text-[11px] font-semibold text-sky-200">
+                            {{ selectedTable?.code || selectedTable?.name || 'Mesa' }}
+                        </span>
+                    </div>
+
+                    <div v-if="selectedAccount" class="space-y-2">
+                        <article v-for="item in accountItems" :key="`mobile-${item.id}`" class="rounded-xl border border-gray-800 bg-gray-950/50 p-2.5">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex min-w-0 flex-1 gap-2.5">
+                                    <div class="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-800">
+                                        <img
+                                            v-if="item.product_photo_url"
+                                            :src="item.product_photo_url"
+                                            :alt="item.product_name"
+                                            class="h-full w-full object-cover"
+                                            loading="lazy"
+                                        />
+                                        <div v-else class="h-full w-full bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.35),_transparent_65%),linear-gradient(135deg,_#111827,_#0f172a)]"></div>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-sm font-semibold text-gray-100">{{ item.product_name }}</p>
+                                        <p v-if="item.note" class="text-[11px] text-gray-400">{{ item.note }}</p>
+                                        <div class="mt-1 flex items-center gap-2 text-[11px]">
+                                            <span class="rounded-full px-2 py-0.5" :class="statusPill(item.kitchen_status)">{{ statusLabel(item.kitchen_status) }}</span>
+                                            <span class="text-gray-400">x{{ item.quantity }}</span>
+                                            <button
+                                                v-if="item.kitchen_status === 'draft'"
+                                                type="button"
+                                                class="rounded-md border border-rose-700/60 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300"
+                                                @click="removeDraftItem(item)"
+                                            >
+                                                Quitar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-sm font-semibold text-gray-100">Q{{ money(item.line_total) }}</p>
+                            </div>
+                        </article>
+
+                        <div v-if="latestAccountNote" class="rounded-xl border border-dashed border-gray-700 bg-gray-950/30 p-3 text-xs text-gray-300">
+                            <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Solicitud especial</p>
                             <p>{{ latestAccountNote }}</p>
                         </div>
                     </div>
@@ -358,6 +480,7 @@ const initialTable = computed(() => {
 
 const selectedTableId = ref(initialTable.value?.id || null);
 const selectedAccountId = ref(initialTable.value?.accounts?.[0]?.id || null);
+const showMobileSummary = ref(false);
 
 const accountModalOpen = ref(false);
 const addItemModalOpen = ref(false);
@@ -399,28 +522,9 @@ const cardPosTerminals = computed(() => props.card_pos_terminals || []);
 const paymentsTotal = computed(() => settleForm.payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
 const paymentDifference = computed(() => Number((selectedAccountTotal.value - paymentsTotal.value).toFixed(2)));
 
-const groupedAccountItems = computed(() => {
+const accountItems = computed(() => {
     const items = selectedAccount.value?.items || [];
-    const grouped = new Map();
-
-    items.forEach((item) => {
-        const key = `${item.product_name}::${item.note || ''}::${item.kitchen_status}`;
-        const current = grouped.get(key) || {
-            key,
-            product_name: item.product_name,
-            product_photo_url: item.product_photo_url || null,
-            note: item.note,
-            kitchen_status: item.kitchen_status,
-            quantity: 0,
-            line_total: 0,
-        };
-
-        current.quantity += Number(item.quantity || 0);
-        current.line_total += Number(item.line_total || 0);
-        grouped.set(key, current);
-    });
-
-    return Array.from(grouped.values());
+    return [...items].sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
 });
 
 const latestAccountNote = computed(() => {
@@ -532,6 +636,14 @@ const sendCurrentAccountToKitchen = () => {
     if (!selectedAccount.value) return;
 
     router.post(`/pos/restaurant/accounts/${selectedAccount.value.id}/send-kitchen`, {}, {
+        preserveScroll: true,
+    });
+};
+
+const removeDraftItem = (item) => {
+    if (!item || item.kitchen_status !== 'draft') return;
+
+    router.post(`/pos/restaurant/items/${item.id}/remove-draft`, {}, {
         preserveScroll: true,
     });
 };

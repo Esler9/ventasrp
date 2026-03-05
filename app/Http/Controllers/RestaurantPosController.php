@@ -130,7 +130,7 @@ class RestaurantPosController extends Controller
             ])
             ->orderBy('name')
             ->limit(200)
-            ->get(['id', 'category_id', 'name', 'sku', 'price', 'stock', 'unit_label']);
+            ->get(['id', 'category_id', 'name', 'sku', 'price', 'stock', 'unit_label', 'photo']);
 
         $availableProducts = $products
             ->filter(function (Product $product): bool {
@@ -957,6 +957,32 @@ class RestaurantPosController extends Controller
         return back()->with('success', [
             'title' => 'Ítem anulado',
             'description' => 'El ítem fue anulado correctamente.',
+        ]);
+    }
+
+    public function removeDraftItem(Request $request, RestaurantAccountItem $item): RedirectResponse
+    {
+        $this->ensureRestaurantMode();
+
+        $item->loadMissing('account:id,status,sale_id');
+        $account = $item->account;
+        if (! $account || $account->status !== 'open' || $account->sale_id) {
+            return back()->withErrors(['restaurant' => 'No puedes modificar ítems de una cuenta ya liquidada/cerrada.']);
+        }
+        if ($item->kitchen_status !== 'draft') {
+            return back()->withErrors(['restaurant' => 'Solo se pueden quitar ítems en borrador (no enviados a cocina).']);
+        }
+
+        $orderId = (int) ($item->restaurant_order_id ?? 0);
+        $item->delete();
+
+        if ($orderId > 0) {
+            $this->syncOrderStatus($orderId);
+        }
+
+        return back()->with('success', [
+            'title' => 'Ítem removido',
+            'description' => 'Se quitó el ítem en borrador de la cuenta.',
         ]);
     }
 
