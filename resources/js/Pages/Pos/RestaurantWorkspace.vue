@@ -15,6 +15,7 @@
 
                     <div class="flex items-center gap-2">
                         <a href="/pos" class="rounded-xl border border-gray-700 bg-gray-950/60 px-3 py-2 text-sm text-gray-200">Volver a mesas</a>
+                        <a href="/pos/delivery" class="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-300">Repartidores</a>
                         <a href="/pos/kitchen" class="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-300">Cocina</a>
                     </div>
                 </div>
@@ -46,6 +47,33 @@
                     >
                         Cuenta con nombre
                     </button>
+                </div>
+
+                <div
+                    v-if="selectedTable?.is_takeaway && selectedAccount"
+                    class="mt-3 rounded-xl border border-emerald-700/40 bg-emerald-900/10 p-3"
+                >
+                    <div class="flex flex-wrap items-end gap-2">
+                        <div class="min-w-[220px] flex-1">
+                            <label class="text-xs text-emerald-200">Repartidor asignado (Delivery)</label>
+                            <select
+                                v-model="selectedDeliveryRiderId"
+                                class="mt-1 h-11 w-full rounded-xl border border-emerald-700/50 bg-gray-950/80 px-3 text-sm text-gray-100"
+                                @change="assignDeliveryRider"
+                            >
+                                <option :value="0">Sin asignar</option>
+                                <option v-for="rider in deliveryRiders" :key="rider.id" :value="rider.id">
+                                    {{ rider.name }} · {{ rider.is_available ? 'Disponible' : 'No disponible' }}
+                                </option>
+                            </select>
+                        </div>
+                        <a href="/pos/delivery" class="h-11 rounded-xl border border-emerald-700/50 px-4 text-sm font-semibold text-emerald-200 inline-flex items-center">
+                            Ver panel repartidores
+                        </a>
+                    </div>
+                    <p class="mt-1 text-[11px] text-emerald-200/80">
+                        Para cuentas Delivery, se requiere repartidor antes de enviar a cocina.
+                    </p>
                 </div>
             </div>
 
@@ -468,7 +496,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -479,6 +507,7 @@ const props = defineProps({
     filters: { type: Object, default: () => ({ q: '', category_id: null }) },
     bank_accounts: { type: Array, default: () => [] },
     card_pos_terminals: { type: Array, default: () => [] },
+    delivery_riders: { type: Array, default: () => [] },
     open_cash_session: { type: Object, default: null },
     active_table_id: { type: Number, default: null },
 });
@@ -528,12 +557,14 @@ const firstError = computed(() => {
 
 const selectedTable = computed(() => props.tables.find((table) => Number(table.id) === Number(selectedTableId.value)) || null);
 const selectedAccount = computed(() => selectedTable.value?.accounts?.find((account) => Number(account.id) === Number(selectedAccountId.value)) || null);
+const selectedDeliveryRiderId = ref(0);
 const selectedAccountTotal = computed(() => Number(selectedAccount.value?.total ?? 0));
 const selectedAccountServedTotal = computed(() => Number(selectedAccount.value?.served_total ?? 0));
 const selectedAccountSubtotal = computed(() => Number((selectedAccountTotal.value - selectedAccountServedTotal.value).toFixed(2)));
 const openCashSession = computed(() => props.open_cash_session || null);
 const bankAccounts = computed(() => props.bank_accounts || []);
 const cardPosTerminals = computed(() => props.card_pos_terminals || []);
+const deliveryRiders = computed(() => props.delivery_riders || []);
 const paymentsTotal = computed(() => settleForm.payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
 const paymentDifference = computed(() => Number((selectedAccountTotal.value - paymentsTotal.value).toFixed(2)));
 
@@ -589,6 +620,7 @@ const filteredProducts = computed(() => {
 const selectAccount = (table, account) => {
     selectedTableId.value = table.id;
     selectedAccountId.value = account.id;
+    selectedDeliveryRiderId.value = Number(account?.delivery_rider_id || 0);
 };
 
 const openAccountModal = () => {
@@ -660,6 +692,16 @@ const sendCurrentAccountToKitchen = () => {
     if (!selectedAccount.value) return;
 
     router.post(`/pos/restaurant/accounts/${selectedAccount.value.id}/send-kitchen`, {}, {
+        preserveScroll: true,
+    });
+};
+
+const assignDeliveryRider = () => {
+    if (!selectedAccount.value || !selectedTable.value?.is_takeaway) return;
+
+    router.post(`/pos/restaurant/accounts/${selectedAccount.value.id}/delivery-rider`, {
+        delivery_rider_id: Number(selectedDeliveryRiderId.value || 0) || null,
+    }, {
         preserveScroll: true,
     });
 };
@@ -758,4 +800,8 @@ const statusPill = (status) => ({
 }[status] || 'bg-gray-700/30 text-gray-300');
 
 const money = (value) => Number(value || 0).toFixed(2);
+
+watch(selectedAccount, (account) => {
+    selectedDeliveryRiderId.value = Number(account?.delivery_rider_id || 0);
+}, { immediate: true });
 </script>

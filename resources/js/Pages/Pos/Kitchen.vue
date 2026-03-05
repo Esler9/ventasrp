@@ -71,19 +71,19 @@
                                     v-for="item in order.items"
                                     :key="item.id"
                                     class="cursor-pointer rounded-xl border border-gray-800 bg-gray-900/70 p-2 transition-colors hover:bg-gray-900/90"
-                                    @click="toggleItemCheck(order.id, item.id)"
+                                    @click="toggleItemCheck(order.id, item)"
                                 >
                                     <div class="flex items-start gap-2">
                                         <input
                                             type="checkbox"
                                             class="pointer-events-none mt-0.5 h-4 w-4 rounded border-gray-700 bg-gray-950/80 text-sky-500"
-                                            :checked="isItemChecked(order.id, item.id)"
+                                            :checked="isItemChecked(order.id, item)"
                                         />
                                         <div class="min-w-0 flex-1 pr-6">
-                                            <p class="text-sm font-semibold" :class="isItemChecked(order.id, item.id) ? 'text-gray-400 line-through' : 'text-gray-100'">
+                                            <p class="text-sm font-semibold" :class="isItemChecked(order.id, item) ? 'text-gray-400 line-through' : 'text-gray-100'">
                                                 {{ item.quantity }}x {{ item.product_name }}
                                             </p>
-                                            <p v-if="item.note" class="mt-1 text-[11px] italic" :class="isItemChecked(order.id, item.id) ? 'text-gray-500 line-through' : 'text-amber-200'">
+                                            <p v-if="item.note" class="mt-1 text-[11px] italic" :class="isItemChecked(order.id, item) ? 'text-gray-500 line-through' : 'text-amber-200'">
                                                 • {{ item.note }}
                                             </p>
                                         </div>
@@ -271,10 +271,14 @@ const orderAction = (order) => {
 
 const itemCheckKey = (orderId, itemId) => `${orderId}:${itemId}`;
 
-const isItemChecked = (orderId, itemId) => Boolean(checkedItems.value[itemCheckKey(orderId, itemId)]);
+const isItemChecked = (orderId, item) => {
+    if (item?.kitchen_status === 'ready') return true;
+    return Boolean(checkedItems.value[itemCheckKey(orderId, item.id)]);
+};
 
-const toggleItemCheck = (orderId, itemId) => {
-    const key = itemCheckKey(orderId, itemId);
+const toggleItemCheck = (orderId, item) => {
+    if (!item || item.kitchen_status === 'ready') return;
+    const key = itemCheckKey(orderId, item.id);
     const next = !checkedItems.value[key];
     checkedItems.value = {
         ...checkedItems.value,
@@ -282,7 +286,7 @@ const toggleItemCheck = (orderId, itemId) => {
     };
 };
 
-const checkedItemsCount = (order) => order.items.filter((item) => isItemChecked(order.id, item.id)).length;
+const checkedItemsCount = (order) => order.items.filter((item) => isItemChecked(order.id, item)).length;
 
 const allItemsChecked = (order) => order.items.length > 0 && checkedItemsCount(order) === order.items.length;
 

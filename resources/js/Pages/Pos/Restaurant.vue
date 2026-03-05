@@ -11,6 +11,9 @@
                         <a href="/pos/kitchen" class="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-300">
                             Ver cocina
                         </a>
+                        <a href="/pos/delivery" class="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-300">
+                            Repartidores
+                        </a>
                         <button
                             type="button"
                             class="rounded-xl bg-brand-primary px-3 py-2 text-sm font-semibold text-white"

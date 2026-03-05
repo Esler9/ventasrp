@@ -13,6 +13,7 @@ use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\RestaurantAccount;
 use App\Models\RestaurantAccountItem;
+use App\Models\RestaurantDeliveryRider;
 use App\Models\RestaurantItemConsumption;
 use App\Models\RestaurantOrder;
 use App\Models\RestaurantTable;
@@ -44,6 +45,72 @@ class RestaurantPosController extends Controller
         $payload['active_table_id'] = (int) $table->id;
 
         return Inertia::render('Pos/RestaurantWorkspace', $payload);
+    }
+
+    public function delivery(Request $request): Response
+    {
+        $this->ensureRestaurantMode();
+
+        $riders = RestaurantDeliveryRider::query()
+            ->where('is_active', true)
+            ->with(['accounts' => function ($query) {
+                $query->where('status', 'open')
+                    ->whereNull('sale_id')
+                    ->with([
+                        'table:id,name,code,is_takeaway',
+                        'items' => function ($itemsQuery) {
+                            $itemsQuery->where('kitchen_status', '!=', 'canceled')
+                                ->select(['id', 'restaurant_account_id', 'quantity', 'unit_price', 'kitchen_status']);
+                        },
+                    ])
+                    ->orderBy('opened_at');
+            }])
+            ->orderBy('name')
+            ->get();
+
+        $unassignedAccounts = RestaurantAccount::query()
+            ->where('status', 'open')
+            ->whereNull('sale_id')
+            ->whereNull('delivery_rider_id')
+            ->whereHas('table', fn ($query) => $query->where('is_takeaway', true))
+            ->with([
+                'table:id,name,code,is_takeaway',
+                'items' => function ($itemsQuery) {
+                    $itemsQuery->where('kitchen_status', '!=', 'canceled')
+                        ->select(['id', 'restaurant_account_id', 'quantity', 'unit_price', 'kitchen_status']);
+                },
+            ])
+            ->orderBy('opened_at')
+            ->get();
+
+        return Inertia::render('Pos/Delivery', [
+            'riders' => $riders->map(fn (RestaurantDeliveryRider $rider) => [
+                'id' => $rider->id,
+                'name' => $rider->name,
+                'phone' => $rider->phone,
+                'is_available' => (bool) $rider->is_available,
+                'accounts' => $rider->accounts->map(fn (RestaurantAccount $account) => [
+                    'id' => $account->id,
+                    'label' => $account->label ?: ('Cuenta #' . $account->id),
+                    'table_name' => $account->table?->name ?: 'Delivery',
+                    'table_code' => $account->table?->code ?: null,
+                    'opened_at' => optional($account->opened_at)->format('Y-m-d H:i:s'),
+                    'items_count' => (int) $account->items->sum('quantity'),
+                    'total' => round((float) $account->items->sum(fn (RestaurantAccountItem $item) => (float) $item->unit_price * (int) $item->quantity), 2),
+                    'pending_work' => $account->items->whereIn('kitchen_status', ['draft', 'pending', 'preparing', 'ready'])->count() > 0,
+                ])->values(),
+            ])->values(),
+            'unassigned_accounts' => $unassignedAccounts->map(fn (RestaurantAccount $account) => [
+                'id' => $account->id,
+                'label' => $account->label ?: ('Cuenta #' . $account->id),
+                'table_name' => $account->table?->name ?: 'Delivery',
+                'table_code' => $account->table?->code ?: null,
+                'opened_at' => optional($account->opened_at)->format('Y-m-d H:i:s'),
+                'items_count' => (int) $account->items->sum('quantity'),
+                'total' => round((float) $account->items->sum(fn (RestaurantAccountItem $item) => (float) $item->unit_price * (int) $item->quantity), 2),
+                'pending_work' => $account->items->whereIn('kitchen_status', ['draft', 'pending', 'preparing', 'ready'])->count() > 0,
+            ])->values(),
+        ]);
     }
 
     public function storeTable(Request $request): RedirectResponse
@@ -178,9 +245,15 @@ class RestaurantPosController extends Controller
             ->filter(fn (BankPosTerminal $terminal) => (bool) $terminal->bankAccount?->is_active)
             ->values();
 
+        $deliveryRiders = RestaurantDeliveryRider::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'is_available']);
+
         $tables = RestaurantTable::query()
             ->with(['accounts' => function ($query) {
                 $query->where('status', 'open')
+                    ->with('deliveryRider:id,name')
                     ->with(['items' => function ($itemsQuery) {
                         $itemsQuery->with('product:id,name,photo')
                             ->select([
@@ -233,6 +306,9 @@ class RestaurantPosController extends Controller
                         'split_type' => $account->split_type,
                         'label' => $account->label ?: ('Cuenta #' . $account->id),
                         'opened_at' => optional($account->opened_at)->format('Y-m-d H:i:s'),
+                        'delivery_rider_id' => $account->delivery_rider_id ? (int) $account->delivery_rider_id : null,
+                        'delivery_assigned_at' => optional($account->delivery_assigned_at)->format('Y-m-d H:i:s'),
+                        'delivery_rider_name' => $account->deliveryRider?->name,
                         'items_count' => $itemsCount,
                         'total' => round($total, 2),
                         'served_total' => round($servedTotal, 2),
@@ -280,6 +356,12 @@ class RestaurantPosController extends Controller
                 'bank_account_id' => $terminal->bank_account_id,
                 'bank_account_label' => trim(($terminal->bankAccount?->bank_name ?? '') . ' · ' . ($terminal->bankAccount?->account_name ?? '')),
                 'currency' => $terminal->bankAccount?->currency ?? 'GTQ',
+            ])->values(),
+            'delivery_riders' => $deliveryRiders->map(fn (RestaurantDeliveryRider $rider) => [
+                'id' => $rider->id,
+                'name' => $rider->name,
+                'phone' => $rider->phone,
+                'is_available' => (bool) $rider->is_available,
             ])->values(),
             'open_cash_session' => $openCashSession ? [
                 'id' => $openCashSession->id,
@@ -330,6 +412,83 @@ class RestaurantPosController extends Controller
         ]);
     }
 
+    public function storeDeliveryRider(Request $request): RedirectResponse
+    {
+        $this->ensureRestaurantMode();
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'phone' => ['nullable', 'string', 'max:40'],
+            'is_available' => ['nullable', 'boolean'],
+        ]);
+
+        RestaurantDeliveryRider::create([
+            'name' => trim((string) $data['name']),
+            'phone' => trim((string) ($data['phone'] ?? '')) ?: null,
+            'is_available' => array_key_exists('is_available', $data) ? (bool) $data['is_available'] : true,
+            'is_active' => true,
+        ]);
+
+        return back()->with('success', [
+            'title' => 'Repartidor creado',
+            'description' => 'El repartidor fue creado correctamente.',
+        ]);
+    }
+
+    public function setDeliveryRiderAvailability(Request $request, RestaurantDeliveryRider $rider): RedirectResponse
+    {
+        $this->ensureRestaurantMode();
+
+        $data = $request->validate([
+            'is_available' => ['required', 'boolean'],
+        ]);
+
+        $rider->update([
+            'is_available' => (bool) $data['is_available'],
+        ]);
+
+        return back()->with('success', [
+            'title' => 'Disponibilidad actualizada',
+            'description' => 'Se actualizó el estado del repartidor.',
+        ]);
+    }
+
+    public function assignDeliveryRider(Request $request, RestaurantAccount $account): RedirectResponse
+    {
+        $this->ensureRestaurantMode();
+
+        $data = $request->validate([
+            'delivery_rider_id' => ['nullable', 'integer', 'exists:restaurant_delivery_riders,id'],
+        ]);
+
+        if ($account->status !== 'open' || $account->sale_id) {
+            return back()->withErrors(['restaurant' => 'Solo puedes asignar repartidor a cuentas abiertas.']);
+        }
+
+        $account->loadMissing('table:id,is_takeaway');
+        if (! $account->table?->is_takeaway) {
+            return back()->withErrors(['restaurant' => 'Solo las mesas de Delivery/Reparto requieren repartidor.']);
+        }
+
+        $riderId = $data['delivery_rider_id'] ?? null;
+        if ($riderId) {
+            $rider = RestaurantDeliveryRider::query()->findOrFail((int) $riderId);
+            if (! $rider->is_active || ! $rider->is_available) {
+                return back()->withErrors(['restaurant' => 'El repartidor seleccionado no está disponible.']);
+            }
+        }
+
+        $account->update([
+            'delivery_rider_id' => $riderId ? (int) $riderId : null,
+            'delivery_assigned_at' => $riderId ? now() : null,
+        ]);
+
+        return back()->with('success', [
+            'title' => 'Repartidor asignado',
+            'description' => $riderId ? 'Se asignó repartidor a la cuenta.' : 'Se removió el repartidor de la cuenta.',
+        ]);
+    }
+
     public function addItem(Request $request, RestaurantAccount $account): RedirectResponse
     {
         $this->ensureRestaurantMode();
@@ -369,6 +528,11 @@ class RestaurantPosController extends Controller
     public function sendToKitchen(Request $request, RestaurantAccount $account): RedirectResponse
     {
         $this->ensureRestaurantMode();
+
+        $account->loadMissing('table:id,is_takeaway');
+        if ($account->table?->is_takeaway && ! $account->delivery_rider_id) {
+            return back()->withErrors(['restaurant' => 'Asigna un repartidor antes de enviar una orden Delivery a cocina.']);
+        }
 
         if ($account->status !== 'open') {
             return back()->withErrors(['restaurant' => 'La cuenta ya está cerrada.']);

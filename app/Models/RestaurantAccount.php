@@ -10,6 +10,7 @@ class RestaurantAccount extends Model
 {
     protected $fillable = [
         'restaurant_table_id',
+        'delivery_rider_id',
         'sale_id',
         'opened_by_user_id',
         'settled_by_user_id',
@@ -17,12 +18,14 @@ class RestaurantAccount extends Model
         'split_type',
         'label',
         'opened_at',
+        'delivery_assigned_at',
         'closed_at',
         'settled_at',
     ];
 
     protected $casts = [
         'opened_at' => 'datetime',
+        'delivery_assigned_at' => 'datetime',
         'closed_at' => 'datetime',
         'settled_at' => 'datetime',
     ];
@@ -45,6 +48,11 @@ class RestaurantAccount extends Model
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class);
+    }
+
+    public function deliveryRider(): BelongsTo
+    {
+        return $this->belongsTo(RestaurantDeliveryRider::class, 'delivery_rider_id');
     }
 
     public function items(): HasMany
