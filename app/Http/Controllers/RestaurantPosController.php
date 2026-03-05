@@ -758,6 +758,88 @@ class RestaurantPosController extends Controller
         ]);
     }
 
+    public function updateKitchenOrderStatus(Request $request, RestaurantOrder $order): RedirectResponse
+    {
+        $this->ensureRestaurantMode();
+
+        $data = $request->validate([
+            'action' => ['required', Rule::in(['start', 'complete'])],
+        ]);
+
+        $action = (string) $data['action'];
+        $updated = 0;
+
+        DB::transaction(function () use ($request, $order, $action, &$updated): void {
+            $items = RestaurantAccountItem::query()
+                ->where('restaurant_order_id', $order->id)
+                ->whereIn('kitchen_status', ['pending', 'preparing', 'ready'])
+                ->lockForUpdate()
+                ->get();
+
+            if ($items->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'restaurant' => 'La orden no tiene ítems activos para actualizar.',
+                ]);
+            }
+
+            $now = now();
+
+            if ($action === 'start') {
+                $pendingItems = $items->where('kitchen_status', 'pending')->values();
+
+                if ($pendingItems->isEmpty()) {
+                    throw ValidationException::withMessages([
+                        'restaurant' => 'Esta orden ya fue iniciada.',
+                    ]);
+                }
+
+                foreach ($pendingItems as $item) {
+                    $item->update([
+                        'kitchen_status' => 'preparing',
+                        'started_at' => $item->started_at ?: $now,
+                    ]);
+                }
+
+                $updated = $pendingItems->count();
+                $this->syncOrderStatus((int) $order->id);
+
+                return;
+            }
+
+            foreach ($items as $item) {
+                if ($item->kitchen_status === 'pending') {
+                    $item->started_at = $item->started_at ?: $now;
+                    $item->ready_at = $item->ready_at ?: $now;
+                    $item->served_at = $item->served_at ?: $now;
+                } elseif ($item->kitchen_status === 'preparing') {
+                    $item->ready_at = $item->ready_at ?: $now;
+                    $item->served_at = $item->served_at ?: $now;
+                } elseif ($item->kitchen_status === 'ready') {
+                    $item->served_at = $item->served_at ?: $now;
+                }
+
+                $item->kitchen_status = 'served';
+                $item->save();
+                $this->consumeInventoryForServedItem($item, (int) $request->user()->id);
+                $updated++;
+            }
+
+            $this->syncOrderStatus((int) $order->id);
+        });
+
+        if ($action === 'start') {
+            return back()->with('success', [
+                'title' => 'Orden iniciada',
+                'description' => "Se iniciaron {$updated} ítems de la orden #{$order->id}.",
+            ]);
+        }
+
+        return back()->with('success', [
+            'title' => 'Orden completada',
+            'description' => "Se completaron {$updated} ítems de la orden #{$order->id}.",
+        ]);
+    }
+
     public function cancelItem(Request $request, RestaurantAccountItem $item): RedirectResponse
     {
         $this->ensureRestaurantMode();
