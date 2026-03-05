@@ -181,13 +181,18 @@ class RestaurantPosController extends Controller
             ->with(['accounts' => function ($query) {
                 $query->where('status', 'open')
                     ->with(['items' => function ($itemsQuery) {
-                        $itemsQuery->select([
-                            'id',
-                            'restaurant_account_id',
-                            'quantity',
-                            'unit_price',
-                            'kitchen_status',
-                        ]);
+                        $itemsQuery->with('product:id,name')
+                            ->select([
+                                'id',
+                                'restaurant_account_id',
+                                'product_id',
+                                'quantity',
+                                'unit_price',
+                                'note',
+                                'kitchen_status',
+                                'created_at',
+                            ])
+                            ->orderBy('id');
                     }])
                     ->orderBy('opened_at');
             }])
@@ -236,6 +241,16 @@ class RestaurantPosController extends Controller
                         'orders_count' => $account->items->whereNotNull('restaurant_order_id')->pluck('restaurant_order_id')->unique()->count(),
                         'can_settle' => $account->items->whereIn('kitchen_status', ['draft', 'pending', 'preparing', 'ready'])->count() === 0
                             && $account->items->where('kitchen_status', 'served')->count() > 0,
+                        'items' => $activeItems->map(fn (RestaurantAccountItem $item) => [
+                            'id' => $item->id,
+                            'quantity' => (int) $item->quantity,
+                            'unit_price' => (float) $item->unit_price,
+                            'note' => $item->note,
+                            'kitchen_status' => $item->kitchen_status,
+                            'product_name' => $item->product?->name ?: 'Producto',
+                            'line_total' => round(((float) $item->unit_price) * (int) $item->quantity, 2),
+                            'created_at' => optional($item->created_at)->format('Y-m-d H:i:s'),
+                        ])->values(),
                     ];
                 })->values();
 

@@ -260,11 +260,9 @@ const orderAction = (order) => {
     if (hasReady) {
         return {
             action: 'deliver',
-            label: allChecked ? 'Entregar' : 'Marca todos para entregar',
-            className: allChecked
-                ? 'bg-amber-400 text-black hover:bg-amber-300'
-                : 'bg-gray-800 text-gray-400 cursor-not-allowed',
-            disabled: !allChecked,
+            label: 'Entregar',
+            className: 'bg-amber-400 text-black hover:bg-amber-300',
+            disabled: false,
         };
     }
 
@@ -320,7 +318,7 @@ const elapsedLabel = (value) => {
 };
 
 const setOrderStatus = (order, action) => {
-    if (!allItemsChecked(order)) return;
+    if (action === 'complete' && !allItemsChecked(order)) return;
 
     router.post(`/pos/restaurant/orders/${order.id}/status`, {
         action,
