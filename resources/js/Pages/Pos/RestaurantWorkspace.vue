@@ -75,7 +75,11 @@
                     </div>
 
                     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        <article v-for="product in filteredProducts" :key="product.id" class="overflow-hidden rounded-2xl border border-gray-800 bg-gray-950/50">
+                        <article
+                            v-for="product in filteredProducts"
+                            :key="product.id"
+                            class="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-950/50"
+                        >
                             <div class="h-32 overflow-hidden">
                                 <img
                                     v-if="product.photo_url"
@@ -86,19 +90,29 @@
                                 />
                                 <div v-else class="h-full bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.35),_transparent_65%),linear-gradient(135deg,_#111827,_#0f172a)]"></div>
                             </div>
-                            <div class="p-3">
+                            <div class="flex flex-1 flex-col p-3">
                                 <p class="line-clamp-2 min-h-10 text-sm font-semibold text-gray-100">{{ product.name }}</p>
                                 <p class="mt-1 text-[11px] text-gray-400">{{ product.sku || 'SIN-SKU' }} · Stock {{ product.stock }}</p>
-                                <div class="mt-3 flex items-center justify-between">
-                                    <p class="text-xl font-semibold text-sky-300">Q{{ money(product.price) }}</p>
-                                    <button
-                                        type="button"
-                                        class="h-11 w-11 rounded-xl bg-sky-500 text-2xl leading-none font-bold text-white disabled:opacity-40"
-                                        :disabled="!selectedAccount"
-                                        @click="openAddItemModal(product)"
-                                    >
-                                        +
-                                    </button>
+                                <div class="mt-auto flex items-end justify-between pt-3">
+                                    <p class="text-xl font-semibold leading-none text-sky-300">Q{{ money(product.price) }}</p>
+                                    <div class="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            class="h-11 rounded-xl border border-gray-700 px-3 text-xs font-semibold text-gray-200 disabled:opacity-40"
+                                            :disabled="!selectedAccount"
+                                            @click="openAddItemModal(product)"
+                                        >
+                                            Nota
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="h-11 w-11 rounded-xl bg-sky-500 text-2xl leading-none font-bold text-white disabled:opacity-40"
+                                            :disabled="!selectedAccount"
+                                            @click="quickAddItem(product)"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </article>
@@ -615,6 +629,18 @@ const openAddItemModal = (product) => {
     addItemForm.quantity = 1;
     addItemForm.note = '';
     addItemModalOpen.value = true;
+};
+
+const quickAddItem = (product) => {
+    if (!selectedAccount.value || !product) return;
+
+    router.post(`/pos/restaurant/accounts/${selectedAccount.value.id}/items`, {
+        product_id: product.id,
+        quantity: 1,
+        note: null,
+    }, {
+        preserveScroll: true,
+    });
 };
 
 const addItemToAccount = () => {
