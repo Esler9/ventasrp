@@ -19,12 +19,12 @@
                     </div>
                 </div>
 
-                <div class="mt-3 flex flex-wrap items-center gap-2">
+                <div class="mt-3 flex snap-x items-center gap-2 overflow-x-auto pb-1">
                     <button
                         v-for="account in selectedTable?.accounts || []"
                         :key="account.id"
                         type="button"
-                        class="rounded-lg border px-3 py-1.5 text-xs"
+                        class="h-11 shrink-0 snap-start rounded-xl border px-4 text-sm font-medium"
                         :class="selectedAccountId === account.id ? 'border-sky-400 bg-sky-500/20 text-sky-100' : 'border-gray-700 bg-gray-950/60 text-gray-300'"
                         @click="selectAccount(selectedTable, account)"
                     >
@@ -32,11 +32,19 @@
                     </button>
                     <button
                         type="button"
-                        class="rounded-lg border border-gray-700 bg-gray-950/60 px-3 py-1.5 text-xs text-gray-300"
+                        class="h-11 shrink-0 rounded-xl bg-sky-500 px-5 text-base font-semibold text-white"
+                        :disabled="!selectedTable"
+                        @click="createQuickAccount"
+                    >
+                        + Cuenta rápida
+                    </button>
+                    <button
+                        type="button"
+                        class="h-11 shrink-0 rounded-xl border border-gray-700 bg-gray-950/60 px-5 text-base text-gray-200"
                         :disabled="!selectedTable"
                         @click="openAccountModal"
                     >
-                        + Cuenta
+                        Cuenta con nombre
                     </button>
                 </div>
             </div>
@@ -50,16 +58,16 @@
                 {{ firstError }}
             </div>
 
-            <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
                 <section class="rounded-2xl border border-gray-800 bg-gray-900/70 p-3">
-                    <div class="mb-3 flex flex-wrap items-end gap-2">
+                    <div class="mb-4 flex flex-wrap items-end gap-2">
                         <div class="min-w-[220px] flex-1">
                             <label class="text-xs text-gray-400">Buscar</label>
-                            <input v-model="search" type="text" class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100" placeholder="Buscar menú o receta..." />
+                            <input v-model="search" type="text" class="mt-1 h-11 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-4 text-base text-gray-100" placeholder="Buscar menú o receta..." />
                         </div>
                         <div class="w-full sm:w-56">
                             <label class="text-xs text-gray-400">Categoría</label>
-                            <select v-model.number="selectedCategoryId" class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100">
+                            <select v-model.number="selectedCategoryId" class="mt-1 h-11 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-4 text-base text-gray-100">
                                 <option :value="0">Todas</option>
                                 <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
                             </select>
@@ -68,7 +76,16 @@
 
                     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <article v-for="product in filteredProducts" :key="product.id" class="overflow-hidden rounded-2xl border border-gray-800 bg-gray-950/50">
-                            <div class="h-28 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.35),_transparent_65%),linear-gradient(135deg,_#111827,_#0f172a)]"></div>
+                            <div class="h-32 overflow-hidden">
+                                <img
+                                    v-if="product.photo_url"
+                                    :src="product.photo_url"
+                                    :alt="product.name"
+                                    class="h-full w-full object-cover"
+                                    loading="lazy"
+                                />
+                                <div v-else class="h-full bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.35),_transparent_65%),linear-gradient(135deg,_#111827,_#0f172a)]"></div>
+                            </div>
                             <div class="p-3">
                                 <p class="line-clamp-2 min-h-10 text-sm font-semibold text-gray-100">{{ product.name }}</p>
                                 <p class="mt-1 text-[11px] text-gray-400">{{ product.sku || 'SIN-SKU' }} · Stock {{ product.stock }}</p>
@@ -76,7 +93,7 @@
                                     <p class="text-xl font-semibold text-sky-300">Q{{ money(product.price) }}</p>
                                     <button
                                         type="button"
-                                        class="h-9 w-9 rounded-lg bg-sky-500 text-lg font-bold text-white disabled:opacity-40"
+                                        class="h-11 w-11 rounded-xl bg-sky-500 text-2xl leading-none font-bold text-white disabled:opacity-40"
                                         :disabled="!selectedAccount"
                                         @click="openAddItemModal(product)"
                                     >
@@ -97,15 +114,27 @@
                     </div>
 
                     <div v-if="selectedAccount" class="space-y-2">
-                        <article v-for="item in groupedAccountItems" :key="item.key" class="rounded-xl border border-gray-800 bg-gray-950/50 p-2">
+                        <article v-for="item in groupedAccountItems" :key="item.key" class="rounded-xl border border-gray-800 bg-gray-950/50 p-2.5">
                             <div class="flex items-start justify-between gap-2">
-                                <div class="min-w-0 flex-1">
+                                <div class="flex min-w-0 flex-1 gap-2.5">
+                                    <div class="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-800">
+                                        <img
+                                            v-if="item.product_photo_url"
+                                            :src="item.product_photo_url"
+                                            :alt="item.product_name"
+                                            class="h-full w-full object-cover"
+                                            loading="lazy"
+                                        />
+                                        <div v-else class="h-full w-full bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.35),_transparent_65%),linear-gradient(135deg,_#111827,_#0f172a)]"></div>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
                                     <p class="text-sm font-semibold text-gray-100">{{ item.product_name }}</p>
                                     <p v-if="item.note" class="text-[11px] text-gray-400">{{ item.note }}</p>
                                     <div class="mt-1 flex items-center gap-2 text-[11px]">
                                         <span class="rounded-full px-2 py-0.5" :class="statusPill(item.kitchen_status)">{{ statusLabel(item.kitchen_status) }}</span>
                                         <span class="text-gray-400">x{{ item.quantity }}</span>
                                     </div>
+                                </div>
                                 </div>
                                 <p class="text-sm font-semibold text-gray-100">Q{{ money(item.line_total) }}</p>
                             </div>
@@ -139,7 +168,7 @@
                     <div class="mt-4 grid gap-2">
                         <button
                             type="button"
-                            class="rounded-xl bg-sky-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                            class="h-12 rounded-xl bg-sky-500 px-4 text-base font-semibold text-white disabled:opacity-40"
                             :disabled="!selectedAccount"
                             @click="sendCurrentAccountToKitchen"
                         >
@@ -147,7 +176,7 @@
                         </button>
                         <button
                             type="button"
-                            class="rounded-xl bg-emerald-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                            class="h-12 rounded-xl bg-emerald-500 px-4 text-base font-semibold text-white disabled:opacity-40"
                             :disabled="!selectedAccount?.can_settle || !openCashSession"
                             @click="openSettleModal"
                         >
@@ -155,7 +184,7 @@
                         </button>
                         <button
                             type="button"
-                            class="rounded-xl border border-gray-700 px-3 py-2 text-sm text-gray-200 disabled:opacity-40"
+                            class="h-12 rounded-xl border border-gray-700 px-4 text-base text-gray-200 disabled:opacity-40"
                             :disabled="!selectedAccount"
                             @click="closeCurrentAccount"
                         >
@@ -169,27 +198,16 @@
         <div v-if="accountModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" @click.self="accountModalOpen = false">
             <div class="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-4">
                 <h2 class="text-base font-semibold text-gray-100">Abrir cuenta en {{ selectedTable?.name }}</h2>
-                <p class="mt-1 text-xs text-gray-400">Define al inicio si la mesa será cuenta única o cuentas separadas.</p>
-
-                <div class="mt-3 space-y-2">
-                    <label class="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-950/60 p-2 text-sm">
-                        <input v-model="newAccountForm.split_type" type="radio" value="unique" />
-                        <span>Cuenta única</span>
-                    </label>
-                    <label class="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-950/60 p-2 text-sm">
-                        <input v-model="newAccountForm.split_type" type="radio" value="split" />
-                        <span>Cuentas separadas</span>
-                    </label>
-                </div>
+                <p class="mt-1 text-xs text-gray-400">Puedes crear todas las cuentas que necesites para esta mesa.</p>
 
                 <div class="mt-3">
                     <label class="text-xs text-gray-400">Etiqueta (opcional)</label>
-                    <input v-model="newAccountForm.label" type="text" maxlength="120" class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm" placeholder="Ej. Familia López" />
+                    <input v-model="newAccountForm.label" type="text" maxlength="120" class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-3 text-base" placeholder="Ej. Familia López" />
                 </div>
 
                 <div class="mt-4 flex justify-end gap-2">
-                    <button type="button" class="rounded-lg border border-gray-700 px-3 py-2 text-sm" @click="accountModalOpen = false">Cancelar</button>
-                    <button type="button" class="rounded-lg bg-amber-400 px-3 py-2 text-sm font-semibold text-black" @click="createAccount">Crear cuenta</button>
+                    <button type="button" class="rounded-xl border border-gray-700 px-4 py-3 text-base" @click="accountModalOpen = false">Cancelar</button>
+                    <button type="button" class="rounded-xl bg-amber-400 px-4 py-3 text-base font-semibold text-black" @click="createAccount">Crear cuenta</button>
                 </div>
             </div>
         </div>
@@ -347,7 +365,6 @@ const selectedProductToAdd = ref(null);
 const settleModalOpen = ref(false);
 
 const newAccountForm = reactive({
-    split_type: 'unique',
     label: '',
 });
 
@@ -391,6 +408,7 @@ const groupedAccountItems = computed(() => {
         const current = grouped.get(key) || {
             key,
             product_name: item.product_name,
+            product_photo_url: item.product_photo_url || null,
             note: item.note,
             kitchen_status: item.kitchen_status,
             quantity: 0,
@@ -456,9 +474,20 @@ const selectAccount = (table, account) => {
 
 const openAccountModal = () => {
     if (!selectedTable.value) return;
-    newAccountForm.split_type = selectedTable.value.accounts.length ? 'split' : 'unique';
     newAccountForm.label = '';
     accountModalOpen.value = true;
+};
+
+const createQuickAccount = () => {
+    if (!selectedTable.value) return;
+
+    const next = (selectedTable.value.accounts?.length || 0) + 1;
+    router.post('/pos/restaurant/accounts', {
+        table_id: selectedTable.value.id,
+        label: `Cuenta ${next}`,
+    }, {
+        preserveScroll: true,
+    });
 };
 
 const createAccount = () => {
@@ -466,7 +495,6 @@ const createAccount = () => {
 
     router.post('/pos/restaurant/accounts', {
         table_id: selectedTable.value.id,
-        split_type: newAccountForm.split_type,
         label: newAccountForm.label || null,
     }, {
         preserveScroll: true,

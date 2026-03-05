@@ -21,6 +21,7 @@ use App\Models\SalePayment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -181,7 +182,7 @@ class RestaurantPosController extends Controller
             ->with(['accounts' => function ($query) {
                 $query->where('status', 'open')
                     ->with(['items' => function ($itemsQuery) {
-                        $itemsQuery->with('product:id,name')
+                        $itemsQuery->with('product:id,name,photo')
                             ->select([
                                 'id',
                                 'restaurant_account_id',
@@ -217,6 +218,7 @@ class RestaurantPosController extends Controller
                 'price' => (float) $product->price,
                 'stock' => (int) $product->stock,
                 'unit_label' => $product->unit_label ?: 'Unidad',
+                'photo_url' => $this->productPhotoUrl($product->photo),
             ])->values(),
             'tables' => $tables->map(function (RestaurantTable $table) {
                 $accounts = $table->accounts->map(function (RestaurantAccount $account) {
@@ -248,6 +250,7 @@ class RestaurantPosController extends Controller
                             'note' => $item->note,
                             'kitchen_status' => $item->kitchen_status,
                             'product_name' => $item->product?->name ?: 'Producto',
+                            'product_photo_url' => $this->productPhotoUrl($item->product?->photo),
                             'line_total' => round(((float) $item->unit_price) * (int) $item->quantity, 2),
                             'created_at' => optional($item->created_at)->format('Y-m-d H:i:s'),
                         ])->values(),
@@ -288,13 +291,23 @@ class RestaurantPosController extends Controller
         ];
     }
 
+    private function productPhotoUrl(?string $photo): ?string
+    {
+        $path = ltrim((string) $photo, '/');
+        if ($path === '') {
+            return null;
+        }
+
+        return asset(Str::startsWith($path, 'products/') ? $path : 'products/' . $path);
+    }
+
     public function createAccount(Request $request): RedirectResponse
     {
         $this->ensureRestaurantMode();
 
         $data = $request->validate([
             'table_id' => ['required', 'integer', 'exists:restaurant_tables,id'],
-            'split_type' => ['required', Rule::in(['unique', 'split'])],
+            'split_type' => ['nullable', Rule::in(['unique', 'split'])],
             'label' => ['nullable', 'string', 'max:120'],
         ]);
 
@@ -302,24 +315,11 @@ class RestaurantPosController extends Controller
             ->where('is_active', true)
             ->findOrFail((int) $data['table_id']);
 
-        if ($data['split_type'] === 'unique') {
-            $alreadyOpen = RestaurantAccount::query()
-                ->where('restaurant_table_id', $table->id)
-                ->where('status', 'open')
-                ->exists();
-
-            if ($alreadyOpen) {
-                return back()->withErrors([
-                    'restaurant' => 'La mesa ya tiene cuentas abiertas. Usa "Cuentas separadas" para abrir otra.',
-                ]);
-            }
-        }
-
         RestaurantAccount::create([
             'restaurant_table_id' => $table->id,
             'opened_by_user_id' => $request->user()->id,
             'status' => 'open',
-            'split_type' => $data['split_type'],
+            'split_type' => (string) ($data['split_type'] ?? 'split'),
             'label' => trim((string) ($data['label'] ?? '')) ?: null,
             'opened_at' => now(),
         ]);
