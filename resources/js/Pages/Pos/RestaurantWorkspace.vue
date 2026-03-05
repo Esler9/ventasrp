@@ -95,24 +95,14 @@
                                 <p class="mt-1 text-[11px] text-gray-400">{{ product.sku || 'SIN-SKU' }} · Stock {{ product.stock }}</p>
                                 <div class="mt-auto flex items-end justify-between pt-3">
                                     <p class="text-xl font-semibold leading-none text-sky-300">Q{{ money(product.price) }}</p>
-                                    <div class="flex items-center gap-2">
-                                        <button
-                                            type="button"
-                                            class="h-11 rounded-xl border border-gray-700 px-3 text-xs font-semibold text-gray-200 disabled:opacity-40"
-                                            :disabled="!selectedAccount"
-                                            @click="openAddItemModal(product)"
-                                        >
-                                            Nota
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="h-11 w-11 rounded-xl bg-sky-500 text-2xl leading-none font-bold text-white disabled:opacity-40"
-                                            :disabled="!selectedAccount"
-                                            @click="quickAddItem(product)"
-                                        >
-                                            +
-                                        </button>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        class="h-11 w-11 rounded-xl bg-sky-500 text-2xl leading-none font-bold text-white disabled:opacity-40"
+                                        :disabled="!selectedAccount"
+                                        @click="quickAddItem(product)"
+                                    >
+                                        +
+                                    </button>
                                 </div>
                             </div>
                         </article>
@@ -147,6 +137,14 @@
                                     <div class="mt-1 flex items-center gap-2 text-[11px]">
                                         <span class="rounded-full px-2 py-0.5" :class="statusPill(item.kitchen_status)">{{ statusLabel(item.kitchen_status) }}</span>
                                         <span class="text-gray-400">x{{ item.quantity }}</span>
+                                        <button
+                                            v-if="item.kitchen_status === 'draft'"
+                                            type="button"
+                                            class="rounded-md border border-sky-700/60 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300"
+                                            @click="openDraftNoteModal(item)"
+                                        >
+                                            Nota
+                                        </button>
                                         <button
                                             v-if="item.kitchen_status === 'draft'"
                                             type="button"
@@ -264,6 +262,14 @@
                                             <button
                                                 v-if="item.kitchen_status === 'draft'"
                                                 type="button"
+                                                class="rounded-md border border-sky-700/60 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300"
+                                                @click="openDraftNoteModal(item)"
+                                            >
+                                                Nota
+                                            </button>
+                                            <button
+                                                v-if="item.kitchen_status === 'draft'"
+                                                type="button"
                                                 class="rounded-md border border-rose-700/60 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300"
                                                 @click="removeDraftItem(item)"
                                             >
@@ -348,25 +354,24 @@
             </div>
         </div>
 
-        <div v-if="addItemModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" @click.self="addItemModalOpen = false">
+        <div v-if="noteModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" @click.self="noteModalOpen = false">
             <div class="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-4">
-                <h2 class="text-base font-semibold text-gray-100">Agregar: {{ selectedProductToAdd?.name }}</h2>
-                <p class="mt-1 text-xs text-gray-400">Cuenta: {{ selectedAccount?.label }}</p>
+                <h2 class="text-base font-semibold text-gray-100">Nota del ítem</h2>
+                <p class="mt-1 text-xs text-gray-400">Agrega una observación rápida para cocina.</p>
 
-                <div class="mt-3 grid gap-3">
-                    <div>
-                        <label class="text-xs text-gray-400">Cantidad</label>
-                        <input v-model.number="addItemForm.quantity" type="number" min="1" class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm" />
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-400">Observaciones para cocina</label>
-                        <textarea v-model="addItemForm.note" rows="3" maxlength="1000" class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm" placeholder="Sin cebolla, bien cocido, etc."></textarea>
-                    </div>
+                <div class="mt-3">
+                    <textarea
+                        v-model="noteDraftText"
+                        rows="4"
+                        maxlength="1000"
+                        class="w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm"
+                        placeholder="Sin cebolla, sin picante, etc."
+                    ></textarea>
                 </div>
 
                 <div class="mt-4 flex justify-end gap-2">
-                    <button type="button" class="rounded-lg border border-gray-700 px-3 py-2 text-sm" @click="addItemModalOpen = false">Cancelar</button>
-                    <button type="button" class="rounded-lg bg-sky-500 px-3 py-2 text-sm font-semibold text-white" @click="addItemToAccount">Agregar</button>
+                    <button type="button" class="rounded-lg border border-gray-700 px-3 py-2 text-sm" @click="noteModalOpen = false">Cancelar</button>
+                    <button type="button" class="rounded-lg bg-sky-500 px-3 py-2 text-sm font-semibold text-white" @click="saveDraftNote">Guardar nota</button>
                 </div>
             </div>
         </div>
@@ -497,17 +502,13 @@ const selectedAccountId = ref(initialTable.value?.accounts?.[0]?.id || null);
 const showMobileSummary = ref(false);
 
 const accountModalOpen = ref(false);
-const addItemModalOpen = ref(false);
-const selectedProductToAdd = ref(null);
+const noteModalOpen = ref(false);
+const noteDraftItemId = ref(null);
+const noteDraftText = ref('');
 const settleModalOpen = ref(false);
 
 const newAccountForm = reactive({
     label: '',
-});
-
-const addItemForm = reactive({
-    quantity: 1,
-    note: '',
 });
 
 const settleForm = reactive({
@@ -622,15 +623,6 @@ const createAccount = () => {
     });
 };
 
-const openAddItemModal = (product) => {
-    if (!selectedAccount.value) return;
-
-    selectedProductToAdd.value = product;
-    addItemForm.quantity = 1;
-    addItemForm.note = '';
-    addItemModalOpen.value = true;
-};
-
 const quickAddItem = (product) => {
     if (!selectedAccount.value || !product) return;
 
@@ -643,17 +635,23 @@ const quickAddItem = (product) => {
     });
 };
 
-const addItemToAccount = () => {
-    if (!selectedAccount.value || !selectedProductToAdd.value) return;
+const openDraftNoteModal = (item) => {
+    if (!item || item.kitchen_status !== 'draft') return;
+    noteDraftItemId.value = item.id;
+    noteDraftText.value = item.note || '';
+    noteModalOpen.value = true;
+};
 
-    router.post(`/pos/restaurant/accounts/${selectedAccount.value.id}/items`, {
-        product_id: selectedProductToAdd.value.id,
-        quantity: Number(addItemForm.quantity || 1),
-        note: addItemForm.note || null,
+const saveDraftNote = () => {
+    if (!noteDraftItemId.value) return;
+
+    router.post(`/pos/restaurant/items/${noteDraftItemId.value}/draft-note`, {
+        note: noteDraftText.value || null,
     }, {
         preserveScroll: true,
         onSuccess: () => {
-            addItemModalOpen.value = false;
+            noteModalOpen.value = false;
+            noteDraftItemId.value = null;
         },
     });
 };

@@ -986,6 +986,33 @@ class RestaurantPosController extends Controller
         ]);
     }
 
+    public function updateDraftItemNote(Request $request, RestaurantAccountItem $item): RedirectResponse
+    {
+        $this->ensureRestaurantMode();
+
+        $data = $request->validate([
+            'note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $item->loadMissing('account:id,status,sale_id');
+        $account = $item->account;
+        if (! $account || $account->status !== 'open' || $account->sale_id) {
+            return back()->withErrors(['restaurant' => 'No puedes modificar ítems de una cuenta ya liquidada/cerrada.']);
+        }
+        if ($item->kitchen_status !== 'draft') {
+            return back()->withErrors(['restaurant' => 'Solo puedes editar notas de ítems en borrador.']);
+        }
+
+        $item->update([
+            'note' => trim((string) ($data['note'] ?? '')) ?: null,
+        ]);
+
+        return back()->with('success', [
+            'title' => 'Nota actualizada',
+            'description' => 'Se actualizó la nota del ítem.',
+        ]);
+    }
+
     private function ensureRestaurantMode(): void
     {
         $mode = AppSetting::current()->business_mode ?: 'minorista';
