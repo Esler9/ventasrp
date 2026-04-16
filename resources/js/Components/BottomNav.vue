@@ -112,6 +112,22 @@ const can = (permission) => permissions.value.includes('*') || permissions.value
 
 const moreItems = computed(() => [
     {
+        key: 'purchases',
+        label: 'Compras',
+        href: '/admin/purchases',
+        enabled: can('purchases.view'),
+        disabledReason: 'Sin permiso para Compras.',
+        disabledTag: 'Sin permiso',
+    },
+    {
+        key: 'suppliers',
+        label: 'Proveedores',
+        href: '/admin/suppliers',
+        enabled: can('suppliers.view'),
+        disabledReason: 'Sin permiso para Proveedores.',
+        disabledTag: 'Sin permiso',
+    },
+    {
         key: 'clients',
         label: 'Clientes',
         href: '/admin/clients',
@@ -175,7 +191,9 @@ const isActive = (key) => {
         (key === 'home' && (path === '/' || path === '/admin')) ||
         (key === 'pos' && path.startsWith('/pos')) ||
         (key === 'products' && path.startsWith('/admin/products')) ||
-        (key === 'clients' && path.startsWith('/admin/clients'));
+        (key === 'clients'    && path.startsWith('/admin/clients'))    ||
+        (key === 'purchases'  && path.startsWith('/admin/purchases'))  ||
+        (key === 'suppliers'  && path.startsWith('/admin/suppliers'));
 
     return {
         'text-amber-200': active,

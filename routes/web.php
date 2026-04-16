@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\CashController;
+use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\Admin\BankController;
@@ -106,4 +108,19 @@ Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
 
     Route::get('/settings', [SettingsController::class, 'index'])->middleware('permission:settings.view')->name('admin.settings.index');
     Route::post('/settings', [SettingsController::class, 'update'])->middleware('permission:settings.update')->name('admin.settings.update');
+
+    // Proveedores
+    Route::get('/suppliers', [SupplierController::class, 'index'])->middleware('permission:suppliers.view')->name('suppliers.index');
+    Route::post('/suppliers', [SupplierController::class, 'store'])->middleware('permission:suppliers.create')->name('suppliers.store');
+    Route::match(['put', 'patch', 'post'], '/suppliers/{supplier}', [SupplierController::class, 'update'])->middleware('permission:suppliers.edit')->name('suppliers.update');
+    Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('permission:suppliers.delete')->name('suppliers.destroy');
+
+    // Compras
+    Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('permission:purchases.view')->name('purchases.index');
+    Route::get('/purchases/create', [PurchaseController::class, 'create'])->middleware('permission:purchases.create')->name('purchases.create');
+    Route::post('/purchases', [PurchaseController::class, 'store'])->middleware('permission:purchases.create')->name('purchases.store');
+    Route::get('/purchases/{purchase}/edit', [PurchaseController::class, 'edit'])->middleware('permission:purchases.edit')->name('purchases.edit');
+    Route::match(['put', 'patch', 'post'], '/purchases/{purchase}', [PurchaseController::class, 'update'])->middleware('permission:purchases.edit')->name('purchases.update');
+    Route::post('/purchases/{purchase}/receive', [PurchaseController::class, 'receive'])->middleware('permission:purchases.edit')->name('purchases.receive');
+    Route::delete('/purchases/{purchase}', [PurchaseController::class, 'destroy'])->middleware('permission:purchases.delete')->name('purchases.destroy');
 });

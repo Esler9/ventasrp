@@ -18,18 +18,20 @@ class SaleItem extends Model
         'quantity',
         'unit_price',
         'original_price',
+        'unit_cost',     // CPP del producto al momento de la venta (para COGS)
         'discount_amount',
         'note',
     ];
 
     protected $casts = [
-        'quantity' => 'integer',
-        'presentation_factor' => 'integer',
+        'quantity'              => 'integer',
+        'presentation_factor'   => 'integer',
         'presentation_quantity' => 'integer',
-        'presentation_price' => 'decimal:2',
-        'unit_price' => 'decimal:2',
-        'original_price' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
+        'presentation_price'    => 'decimal:2',
+        'unit_price'            => 'decimal:2',
+        'original_price'        => 'decimal:2',
+        'unit_cost'             => 'decimal:4',
+        'discount_amount'       => 'decimal:2',
     ];
 
     public function sale(): BelongsTo

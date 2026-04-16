@@ -362,28 +362,38 @@ class PosController extends Controller
                     /** @var Product $product */
                     $product = $item['product'];
 
+                    // Capturar CPP y stock ANTES del decremento
+                    $unitCost    = (float) $product->cost_price;
+                    $stockBefore = (int) $product->stock;
+
                     $sale->items()->create([
-                        'product_id' => $product->id,
+                        'product_id'              => $product->id,
                         'product_presentation_id' => $item['product_presentation_id'],
-                        'presentation_name' => $item['presentation_name'],
-                        'presentation_factor' => $item['presentation_factor'],
-                        'presentation_price' => $item['presentation_price'],
-                        'presentation_quantity' => $item['presentation_quantity'],
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $item['unit_price'],
-                        'original_price' => $item['original_price'],
-                        'discount_amount' => $item['discount_amount'],
-                        'note' => $item['note'],
+                        'presentation_name'       => $item['presentation_name'],
+                        'presentation_factor'     => $item['presentation_factor'],
+                        'presentation_price'      => $item['presentation_price'],
+                        'presentation_quantity'   => $item['presentation_quantity'],
+                        'quantity'                => $item['quantity'],
+                        'unit_price'              => $item['unit_price'],
+                        'original_price'          => $item['original_price'],
+                        'unit_cost'               => $unitCost,   // CPP al momento de venta
+                        'discount_amount'         => $item['discount_amount'],
+                        'note'                    => $item['note'],
                     ]);
 
                     $product->decrement('stock', $item['quantity']);
 
                     InventoryMovement::create([
-                        'product_id' => $product->id,
-                        'user_id' => $user->id,
-                        'type' => 'sale',
-                        'quantity' => -$item['quantity'],
-                        'note' => 'Venta ' . $sale->sale_code,
+                        'product_id'     => $product->id,
+                        'user_id'        => $user->id,
+                        'type'           => 'sale',
+                        'quantity'       => -$item['quantity'],
+                        'unit_cost'      => $unitCost,
+                        'reference_type' => 'sale',
+                        'reference_id'   => $sale->id,
+                        'stock_before'   => $stockBefore,
+                        'stock_after'    => $stockBefore - $item['quantity'],
+                        'note'           => 'Venta ' . $sale->sale_code,
                     ]);
                 }
 

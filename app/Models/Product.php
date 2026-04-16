@@ -11,6 +11,8 @@ use App\Models\ProductPresentation;
 class Product extends Model
 {
     protected $fillable = [
+        // NOTE: cost_price se actualiza automáticamente por Costo Promedio Ponderado
+        // al recibir compras. No editar manualmente salvo ajuste inicial.
         'category_id',
         'name',
         'unit_label',
@@ -56,5 +58,34 @@ class Product extends Model
     public function recipe(): HasOne
     {
         return $this->hasOne(ProductRecipe::class);
+    }
+
+    public function purchaseItems(): HasMany
+    {
+        return $this->hasMany(PurchaseItem::class);
+    }
+
+    /**
+     * Calcula y aplica el Costo Promedio Ponderado (CPP) al recibir una compra.
+     *
+     * Fórmula: CPP_nuevo = (stock_actual × costo_actual + qty_comprada × costo_compra)
+     *                       / (stock_actual + qty_comprada)
+     *
+     * No llama save() — el caller debe guardar el modelo después de ajustar stock.
+     */
+    public function applyWeightedAverageCost(int $qty, float $purchaseCost): void
+    {
+        $currentStock = max(0, (int) $this->stock);
+        $currentCost  = (float) $this->cost_price;
+
+        if ($currentStock <= 0 || $currentCost <= 0) {
+            // Sin stock previo (o costo cero): el costo de compra es el nuevo CPP
+            $this->cost_price = round($purchaseCost, 4);
+        } else {
+            $this->cost_price = round(
+                ($currentStock * $currentCost + $qty * $purchaseCost) / ($currentStock + $qty),
+                4
+            );
+        }
     }
 }
