@@ -57,7 +57,7 @@ class RestaurantPosController extends Controller
                 $query->where('status', 'open')
                     ->whereNull('sale_id')
                     ->with([
-                        'table:id,name,code,is_takeaway',
+                        'table:id,name,code,is_takeaway,takeaway_service_type',
                         'items' => function ($itemsQuery) {
                             $itemsQuery->where('kitchen_status', '!=', 'canceled')
                                 ->select(['id', 'restaurant_account_id', 'quantity', 'unit_price', 'kitchen_status']);
@@ -72,9 +72,9 @@ class RestaurantPosController extends Controller
             ->where('status', 'open')
             ->whereNull('sale_id')
             ->whereNull('delivery_rider_id')
-            ->whereHas('table', fn ($query) => $query->where('is_takeaway', true))
+            ->whereHas('table', fn ($query) => $query->where('is_takeaway', true)->where('takeaway_service_type', 'delivery'))
             ->with([
-                'table:id,name,code,is_takeaway',
+                'table:id,name,code,is_takeaway,takeaway_service_type',
                 'items' => function ($itemsQuery) {
                     $itemsQuery->where('kitchen_status', '!=', 'canceled')
                         ->select(['id', 'restaurant_account_id', 'quantity', 'unit_price', 'kitchen_status']);
@@ -122,6 +122,7 @@ class RestaurantPosController extends Controller
             'code' => ['required', 'string', 'max:40', Rule::unique('restaurant_tables', 'code')],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_takeaway' => ['nullable', 'boolean'],
+            'takeaway_service_type' => ['nullable', Rule::in(['pickup', 'delivery'])],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -130,6 +131,9 @@ class RestaurantPosController extends Controller
             'code' => strtoupper(trim((string) $data['code'])),
             'sort_order' => (int) ($data['sort_order'] ?? 0),
             'is_takeaway' => (bool) ($data['is_takeaway'] ?? false),
+            'takeaway_service_type' => (bool) ($data['is_takeaway'] ?? false)
+                ? (string) ($data['takeaway_service_type'] ?? 'delivery')
+                : null,
             'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
         ]);
 
@@ -148,6 +152,7 @@ class RestaurantPosController extends Controller
             'code' => ['required', 'string', 'max:40', Rule::unique('restaurant_tables', 'code')->ignore($table->id)],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_takeaway' => ['nullable', 'boolean'],
+            'takeaway_service_type' => ['nullable', Rule::in(['pickup', 'delivery'])],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -156,6 +161,9 @@ class RestaurantPosController extends Controller
             'code' => strtoupper(trim((string) $data['code'])),
             'sort_order' => (int) ($data['sort_order'] ?? 0),
             'is_takeaway' => (bool) ($data['is_takeaway'] ?? false),
+            'takeaway_service_type' => (bool) ($data['is_takeaway'] ?? false)
+                ? (string) ($data['takeaway_service_type'] ?? 'delivery')
+                : null,
             'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : $table->is_active,
         ]);
 
@@ -339,6 +347,7 @@ class RestaurantPosController extends Controller
                     'code' => $table->code,
                     'sort_order' => (int) $table->sort_order,
                     'is_takeaway' => (bool) $table->is_takeaway,
+                    'takeaway_service_type' => $table->takeaway_service_type,
                     'is_active' => (bool) $table->is_active,
                     'status' => $accounts->isEmpty() ? 'free' : 'occupied',
                     'accounts' => $accounts,
@@ -465,8 +474,8 @@ class RestaurantPosController extends Controller
             return back()->withErrors(['restaurant' => 'Solo puedes asignar repartidor a cuentas abiertas.']);
         }
 
-        $account->loadMissing('table:id,is_takeaway');
-        if (! $account->table?->is_takeaway) {
+        $account->loadMissing('table:id,is_takeaway,takeaway_service_type');
+        if (! $account->table?->is_takeaway || $account->table?->takeaway_service_type !== 'delivery') {
             return back()->withErrors(['restaurant' => 'Solo las mesas de Delivery/Reparto requieren repartidor.']);
         }
 
@@ -529,8 +538,8 @@ class RestaurantPosController extends Controller
     {
         $this->ensureRestaurantMode();
 
-        $account->loadMissing('table:id,is_takeaway');
-        if ($account->table?->is_takeaway && ! $account->delivery_rider_id) {
+        $account->loadMissing('table:id,is_takeaway,takeaway_service_type');
+        if ($account->table?->is_takeaway && $account->table?->takeaway_service_type === 'delivery' && ! $account->delivery_rider_id) {
             return back()->withErrors(['restaurant' => 'Asigna un repartidor antes de enviar una orden Delivery a cocina.']);
         }
 

@@ -50,7 +50,7 @@
                 </div>
 
                 <div
-                    v-if="selectedTable?.is_takeaway && selectedAccount"
+                    v-if="selectedTable?.is_takeaway && selectedTable?.takeaway_service_type === 'delivery' && selectedAccount"
                     class="mt-3 rounded-xl border border-emerald-700/40 bg-emerald-900/10 p-3"
                 >
                     <div class="flex flex-wrap items-end gap-2">
@@ -697,7 +697,7 @@ const sendCurrentAccountToKitchen = () => {
 };
 
 const assignDeliveryRider = () => {
-    if (!selectedAccount.value || !selectedTable.value?.is_takeaway) return;
+    if (!selectedAccount.value || !selectedTable.value?.is_takeaway || selectedTable.value?.takeaway_service_type !== 'delivery') return;
 
     router.post(`/pos/restaurant/accounts/${selectedAccount.value.id}/delivery-rider`, {
         delivery_rider_id: Number(selectedDeliveryRiderId.value || 0) || null,

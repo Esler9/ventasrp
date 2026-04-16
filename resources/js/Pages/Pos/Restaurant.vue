@@ -86,7 +86,7 @@
                         </div>
                         <p class="mt-3 text-xl font-semibold text-gray-100">{{ table.name }}</p>
                         <p class="mt-1 text-xs text-gray-400">
-                            {{ table.is_takeaway ? 'Takeaway' : 'Salón' }}
+                            {{ table.is_takeaway ? takeawayTypeLabel(table.takeaway_service_type) : 'Salón' }}
                             · {{ table.accounts.length }} cuenta(s)
                         </p>
                         <p v-if="tableOpenElapsed(table)" class="mt-1 text-[11px] text-gray-500">{{ tableOpenElapsed(table) }}</p>
@@ -129,6 +129,13 @@
                         <input v-model="tableForm.is_takeaway" type="checkbox" />
                         <span>Mesa de takeaway</span>
                     </label>
+                    <div v-if="tableForm.is_takeaway">
+                        <label class="text-xs text-gray-400">Tipo de servicio para llevar</label>
+                        <select v-model="tableForm.takeaway_service_type" class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100">
+                            <option value="pickup">Recoger en tienda</option>
+                            <option value="delivery">Delivery</option>
+                        </select>
+                    </div>
                     <label class="flex items-center gap-2 rounded-xl border border-gray-700 bg-gray-950/50 px-3 py-2 text-sm">
                         <input v-model="tableForm.is_active" type="checkbox" />
                         <span>Mesa activa</span>
@@ -167,6 +174,7 @@ const tableForm = reactive({
     code: '',
     sort_order: 0,
     is_takeaway: false,
+    takeaway_service_type: 'delivery',
     is_active: true,
 });
 
@@ -246,6 +254,7 @@ const openCreateTableModal = () => {
     tableForm.code = '';
     tableForm.sort_order = props.tables.length + 1;
     tableForm.is_takeaway = false;
+    tableForm.takeaway_service_type = 'delivery';
     tableForm.is_active = true;
     tableModalOpen.value = true;
 };
@@ -257,6 +266,7 @@ const openEditTableModal = (table) => {
     tableForm.code = table.code || '';
     tableForm.sort_order = Number(table.sort_order || 0);
     tableForm.is_takeaway = Boolean(table.is_takeaway);
+    tableForm.takeaway_service_type = table.takeaway_service_type || 'delivery';
     tableForm.is_active = Boolean(table.is_active);
     tableModalOpen.value = true;
 };
@@ -271,6 +281,7 @@ const submitTable = () => {
         code: tableForm.code,
         sort_order: Number(tableForm.sort_order || 0),
         is_takeaway: tableForm.is_takeaway,
+        takeaway_service_type: tableForm.is_takeaway ? tableForm.takeaway_service_type : null,
         is_active: tableForm.is_active,
     };
 
@@ -293,5 +304,11 @@ const submitTable = () => {
             tableModalOpen.value = false;
         },
     });
+};
+
+const takeawayTypeLabel = (type) => {
+    if (type === 'pickup') return 'Recoger en tienda';
+    if (type === 'delivery') return 'Delivery';
+    return 'Takeaway';
 };
 </script>

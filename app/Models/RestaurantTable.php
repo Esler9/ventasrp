@@ -11,6 +11,7 @@ class RestaurantTable extends Model
         'name',
         'code',
         'is_takeaway',
+        'takeaway_service_type',
         'is_active',
         'sort_order',
     ];
