@@ -45,7 +45,7 @@ return new class extends Migration
                 $table->timestamp('reversed_at')->nullable();
                 $table->timestamps();
 
-                $table->index(['restaurant_account_item_id', 'reversed_at']);
+                $table->index(['restaurant_account_item_id', 'reversed_at'], 'ric_account_item_reversed_idx');
             });
         }
     }
