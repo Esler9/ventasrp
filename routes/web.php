@@ -105,6 +105,7 @@ Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
     Route::get('/users', [UserController::class, 'index'])->middleware('permission:users.view')->name('admin.users.index');
     Route::post('/users', [UserController::class, 'store'])->middleware('permission:users.manage')->name('admin.users.store');
     Route::match(['put', 'patch', 'post'], '/users/{user}', [UserController::class, 'update'])->middleware('permission:users.manage')->name('admin.users.update');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('permission:users.manage')->name('admin.users.destroy');
 
     Route::get('/settings', [SettingsController::class, 'index'])->middleware('permission:settings.view')->name('admin.settings.index');
     Route::post('/settings', [SettingsController::class, 'update'])->middleware('permission:settings.update')->name('admin.settings.update');
