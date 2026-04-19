@@ -9,20 +9,20 @@ use App\Models\BankPosTerminal;
 use App\Models\Category;
 use App\Models\CashMovement;
 use App\Models\CashSession;
-use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\RestaurantAccount;
 use App\Models\RestaurantAccountItem;
 use App\Models\RestaurantDeliveryRider;
-use App\Models\RestaurantItemConsumption;
 use App\Models\RestaurantOrder;
 use App\Models\RestaurantTable;
 use App\Models\Sale;
 use App\Models\SalePayment;
+use App\Services\Restaurant\RestaurantInventoryService;
+use App\Services\Restaurant\RestaurantOrderService;
+use App\Services\Restaurant\RestaurantPosViewService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -30,18 +30,24 @@ use Inertia\Response;
 
 class RestaurantPosController extends Controller
 {
+    public function __construct(
+        private readonly RestaurantInventoryService $inventoryService,
+        private readonly RestaurantOrderService $orderService,
+        private readonly RestaurantPosViewService $viewService,
+    ) {}
+
     public function index(Request $request): Response
     {
         $this->ensureRestaurantMode();
 
-        return Inertia::render('Pos/Restaurant', $this->buildRestaurantViewData($request));
+        return Inertia::render('Pos/Restaurant', $this->viewService->buildViewData($request));
     }
 
     public function workspace(Request $request, RestaurantTable $table): Response
     {
         $this->ensureRestaurantMode();
 
-        $payload = $this->buildRestaurantViewData($request);
+        $payload = $this->viewService->buildViewData($request);
         $payload['active_table_id'] = (int) $table->id;
 
         return Inertia::render('Pos/RestaurantWorkspace', $payload);
@@ -173,225 +179,6 @@ class RestaurantPosController extends Controller
         ]);
     }
 
-    private function buildRestaurantViewData(Request $request): array
-    {
-        $q = trim((string) $request->query('q', ''));
-        $selectedCategoryId = (int) $request->query('category_id', 0);
-
-        $categories = Category::query()
-            ->where('is_active', true)
-            ->whereHas('products', fn ($query) => $query->where('is_active', true))
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $products = Product::query()
-            ->where('is_active', true)
-            ->when($selectedCategoryId > 0, fn ($query) => $query->where('category_id', $selectedCategoryId))
-            ->when($q !== '', function ($query) use ($q) {
-                $query->where(function ($sub) use ($q) {
-                    $sub->where('name', 'like', "%{$q}%")
-                        ->orWhere('sku', 'like', "%{$q}%")
-                        ->orWhere('description', 'like', "%{$q}%");
-                });
-            })
-            ->with([
-                'recipe' => function ($query) {
-                    $query->with([
-                        'items' => function ($itemsQuery) {
-                            $itemsQuery->with('ingredient:id,stock');
-                        },
-                    ]);
-                },
-            ])
-            ->orderBy('name')
-            ->limit(200)
-            ->get(['id', 'category_id', 'name', 'sku', 'price', 'stock', 'unit_label', 'photo']);
-
-        $availableProducts = $products
-            ->filter(function (Product $product): bool {
-                $recipe = $product->recipe;
-                if ($recipe && $recipe->is_active && $recipe->items->isNotEmpty()) {
-                    $possibleByRecipe = null;
-
-                    foreach ($recipe->items as $recipeItem) {
-                        $required = max(1, (int) $recipeItem->quantity);
-                        $stock = max(0, (int) ($recipeItem->ingredient?->stock ?? 0));
-                        $possible = intdiv($stock, $required);
-                        $possibleByRecipe = $possibleByRecipe === null ? $possible : min($possibleByRecipe, $possible);
-
-                        if ($possibleByRecipe < 1) {
-                            return false;
-                        }
-                    }
-
-                    return (int) ($possibleByRecipe ?? 0) > 0;
-                }
-
-                return (int) $product->stock > 0;
-            })
-            ->take(60)
-            ->values();
-
-        $openCashSession = CashSession::query()
-            ->with('register:id,name,branch_name')
-            ->where('user_id', $request->user()->id)
-            ->where('status', 'open')
-            ->latest('opened_at')
-            ->first();
-
-        $bankAccounts = BankAccount::query()
-            ->where('is_active', true)
-            ->orderBy('bank_name')
-            ->orderBy('account_name')
-            ->get(['id', 'bank_name', 'account_name', 'currency']);
-
-        $cardPosTerminals = BankPosTerminal::query()
-            ->with('bankAccount:id,bank_name,account_name,currency,is_active')
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get()
-            ->filter(fn (BankPosTerminal $terminal) => (bool) $terminal->bankAccount?->is_active)
-            ->values();
-
-        $deliveryRiders = RestaurantDeliveryRider::query()
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'phone', 'is_available']);
-
-        $tables = RestaurantTable::query()
-            ->with(['accounts' => function ($query) {
-                $query->where('status', 'open')
-                    ->with('deliveryRider:id,name')
-                    ->with(['items' => function ($itemsQuery) {
-                        $itemsQuery->with('product:id,name,photo')
-                            ->select([
-                                'id',
-                                'restaurant_account_id',
-                                'product_id',
-                                'quantity',
-                                'unit_price',
-                                'note',
-                                'kitchen_status',
-                                'created_at',
-                            ])
-                            ->orderBy('id');
-                    }])
-                    ->orderBy('opened_at');
-            }])
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
-
-        return [
-            'filters' => [
-                'q' => $q,
-                'category_id' => $selectedCategoryId > 0 ? $selectedCategoryId : null,
-            ],
-            'categories' => $categories->map(fn (Category $category) => [
-                'id' => $category->id,
-                'name' => $category->name,
-            ])->values(),
-            'products' => $availableProducts->map(fn (Product $product) => [
-                'id' => $product->id,
-                'category_id' => $product->category_id,
-                'name' => $product->name,
-                'sku' => $product->sku,
-                'price' => (float) $product->price,
-                'stock' => (int) $product->stock,
-                'unit_label' => $product->unit_label ?: 'Unidad',
-                'photo_url' => $this->productPhotoUrl($product->photo),
-            ])->values(),
-            'tables' => $tables->map(function (RestaurantTable $table) {
-                $accounts = $table->accounts->map(function (RestaurantAccount $account) {
-                    $itemsCount = (int) $account->items->sum('quantity');
-                    $activeItems = $account->items->where('kitchen_status', '!=', 'canceled');
-                    $servedItems = $activeItems->where('kitchen_status', 'served');
-                    $total = (float) $activeItems->sum(fn (RestaurantAccountItem $item) => (float) $item->unit_price * (int) $item->quantity);
-                    $servedTotal = (float) $servedItems->sum(fn (RestaurantAccountItem $item) => (float) $item->unit_price * (int) $item->quantity);
-
-                    return [
-                        'id' => $account->id,
-                        'split_type' => $account->split_type,
-                        'label' => $account->label ?: ('Cuenta #' . $account->id),
-                        'opened_at' => optional($account->opened_at)->format('Y-m-d H:i:s'),
-                        'delivery_rider_id' => $account->delivery_rider_id ? (int) $account->delivery_rider_id : null,
-                        'delivery_assigned_at' => optional($account->delivery_assigned_at)->format('Y-m-d H:i:s'),
-                        'delivery_rider_name' => $account->deliveryRider?->name,
-                        'items_count' => $itemsCount,
-                        'total' => round($total, 2),
-                        'served_total' => round($servedTotal, 2),
-                        'draft_items' => $account->items->where('kitchen_status', 'draft')->count(),
-                        'pending_items' => $account->items->where('kitchen_status', 'pending')->count(),
-                        'preparing_items' => $account->items->where('kitchen_status', 'preparing')->count(),
-                        'ready_items' => $account->items->where('kitchen_status', 'ready')->count(),
-                        'orders_count' => $account->items->whereNotNull('restaurant_order_id')->pluck('restaurant_order_id')->unique()->count(),
-                        'can_settle' => $account->items->whereIn('kitchen_status', ['draft', 'pending', 'preparing', 'ready'])->count() === 0
-                            && $account->items->where('kitchen_status', 'served')->count() > 0,
-                        'items' => $activeItems->map(fn (RestaurantAccountItem $item) => [
-                            'id' => $item->id,
-                            'quantity' => (int) $item->quantity,
-                            'unit_price' => (float) $item->unit_price,
-                            'note' => $item->note,
-                            'kitchen_status' => $item->kitchen_status,
-                            'product_name' => $item->product?->name ?: 'Producto',
-                            'product_photo_url' => $this->productPhotoUrl($item->product?->photo),
-                            'line_total' => round(((float) $item->unit_price) * (int) $item->quantity, 2),
-                            'created_at' => optional($item->created_at)->format('Y-m-d H:i:s'),
-                        ])->values(),
-                    ];
-                })->values();
-
-                return [
-                    'id' => $table->id,
-                    'name' => $table->name,
-                    'code' => $table->code,
-                    'sort_order' => (int) $table->sort_order,
-                    'is_takeaway' => (bool) $table->is_takeaway,
-                    'takeaway_service_type' => $table->takeaway_service_type,
-                    'is_active' => (bool) $table->is_active,
-                    'status' => $accounts->isEmpty() ? 'free' : 'occupied',
-                    'accounts' => $accounts,
-                ];
-            })->values(),
-            'bank_accounts' => $bankAccounts->map(fn (BankAccount $account) => [
-                'id' => $account->id,
-                'label' => trim($account->bank_name . ' · ' . $account->account_name),
-                'currency' => $account->currency,
-            ])->values(),
-            'card_pos_terminals' => $cardPosTerminals->map(fn (BankPosTerminal $terminal) => [
-                'id' => $terminal->id,
-                'name' => $terminal->name,
-                'commission_percent' => (float) $terminal->commission_percent,
-                'bank_account_id' => $terminal->bank_account_id,
-                'bank_account_label' => trim(($terminal->bankAccount?->bank_name ?? '') . ' · ' . ($terminal->bankAccount?->account_name ?? '')),
-                'currency' => $terminal->bankAccount?->currency ?? 'GTQ',
-            ])->values(),
-            'delivery_riders' => $deliveryRiders->map(fn (RestaurantDeliveryRider $rider) => [
-                'id' => $rider->id,
-                'name' => $rider->name,
-                'phone' => $rider->phone,
-                'is_available' => (bool) $rider->is_available,
-            ])->values(),
-            'open_cash_session' => $openCashSession ? [
-                'id' => $openCashSession->id,
-                'register' => $openCashSession->register?->name,
-                'branch' => $openCashSession->register?->branch_name,
-                'opened_at' => optional($openCashSession->opened_at)->format('Y-m-d H:i:s'),
-                'opening_amount' => (float) $openCashSession->opening_amount,
-            ] : null,
-        ];
-    }
-
-    private function productPhotoUrl(?string $photo): ?string
-    {
-        $path = ltrim((string) $photo, '/');
-        if ($path === '') {
-            return null;
-        }
-
-        return asset(Str::startsWith($path, 'products/') ? $path : 'products/' . $path);
-    }
-
     public function createAccount(Request $request): RedirectResponse
     {
         $this->ensureRestaurantMode();
@@ -452,9 +239,7 @@ class RestaurantPosController extends Controller
             'is_available' => ['required', 'boolean'],
         ]);
 
-        $rider->update([
-            'is_available' => (bool) $data['is_available'],
-        ]);
+        $rider->update(['is_available' => (bool) $data['is_available']]);
 
         return back()->with('success', [
             'title' => 'Disponibilidad actualizada',
@@ -606,10 +391,7 @@ class RestaurantPosController extends Controller
             ]);
         }
 
-        $account->update([
-            'status' => 'closed',
-            'closed_at' => now(),
-        ]);
+        $account->update(['status' => 'closed', 'closed_at' => now()]);
 
         return back()->with('success', [
             'title' => 'Cuenta cerrada',
@@ -696,9 +478,7 @@ class RestaurantPosController extends Controller
 
         DB::transaction(function () use ($account, $request, $payments, $session, $total): void {
             $user = $request->user();
-            $lockedAccount = RestaurantAccount::query()
-                ->lockForUpdate()
-                ->find($account->id);
+            $lockedAccount = RestaurantAccount::query()->lockForUpdate()->find($account->id);
 
             if (! $lockedAccount || $lockedAccount->status !== 'open' || $lockedAccount->sale_id) {
                 throw ValidationException::withMessages([
@@ -743,7 +523,7 @@ class RestaurantPosController extends Controller
                 ->keyBy('id');
 
             $sale = Sale::create([
-                'sale_code' => $this->generateRestaurantSaleCode(),
+                'sale_code' => $this->orderService->generateSaleCode(),
                 'user_id' => $user->id,
                 'customer_id' => null,
                 'customer_name' => trim(($lockedAccount->table?->name ?? 'Mesa') . ' · ' . ($lockedAccount->label ?: ('Cuenta #' . $lockedAccount->id))),
@@ -822,12 +602,12 @@ class RestaurantPosController extends Controller
                         'cash_session_id' => $session->id,
                         'user_id' => $user->id,
                         'type' => 'sale',
-                            'method' => 'cash',
-                            'amount' => $amount,
-                            'note' => 'Venta restaurante ' . $sale->sale_code,
-                            'meta' => ['sale_id' => $sale->id, 'restaurant_account_id' => $lockedAccount->id],
-                        ]);
-                    }
+                        'method' => 'cash',
+                        'amount' => $amount,
+                        'note' => 'Venta restaurante ' . $sale->sale_code,
+                        'meta' => ['sale_id' => $sale->id, 'restaurant_account_id' => $lockedAccount->id],
+                    ]);
+                }
 
                 if ($method === 'transfer' && $bankAccountId) {
                     $bankAccount = BankAccount::query()->lockForUpdate()->find($bankAccountId);
@@ -983,7 +763,7 @@ class RestaurantPosController extends Controller
             };
 
             if (! in_array($status, $allowed, true)) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'kitchen_status' => 'Transición de estado no válida para este ítem.',
                 ]);
             }
@@ -1001,11 +781,11 @@ class RestaurantPosController extends Controller
             }
 
             if ($status === 'served') {
-                $this->consumeInventoryForServedItem($item, (int) $request->user()->id);
+                $this->inventoryService->consumeForServedItem($item, (int) $request->user()->id);
             }
 
             $item->update($updates);
-            $this->syncOrderStatus((int) $item->restaurant_order_id);
+            $this->orderService->syncOrderStatus((int) $item->restaurant_order_id);
         });
 
         return back()->with('success', [
@@ -1060,7 +840,7 @@ class RestaurantPosController extends Controller
                     ]);
                 }
 
-                $this->syncOrderStatus((int) $order->id);
+                $this->orderService->syncOrderStatus((int) $order->id);
                 return;
             }
 
@@ -1075,11 +855,11 @@ class RestaurantPosController extends Controller
                 $item->served_at = $item->served_at ?: $now;
                 $item->kitchen_status = 'served';
                 $item->save();
-                $this->consumeInventoryForServedItem($item, (int) $request->user()->id);
+                $this->inventoryService->consumeForServedItem($item, (int) $request->user()->id);
                 $updated++;
             }
 
-            $this->syncOrderStatus((int) $order->id);
+            $this->orderService->syncOrderStatus((int) $order->id);
         });
 
         if ($action === 'complete') {
@@ -1114,7 +894,7 @@ class RestaurantPosController extends Controller
 
         DB::transaction(function () use ($item, $request, $data): void {
             if ($item->kitchen_status === 'served') {
-                $this->reverseConsumptionsForCanceledItem($item, (int) $request->user()->id);
+                $this->inventoryService->reverseConsumptionsForCanceledItem($item, (int) $request->user()->id);
             }
 
             $item->update([
@@ -1124,7 +904,7 @@ class RestaurantPosController extends Controller
                 'cancel_reason' => trim((string) $data['reason']),
             ]);
 
-            $this->syncOrderStatus((int) $item->restaurant_order_id);
+            $this->orderService->syncOrderStatus((int) $item->restaurant_order_id);
         });
 
         return back()->with('success', [
@@ -1150,7 +930,7 @@ class RestaurantPosController extends Controller
         $item->delete();
 
         if ($orderId > 0) {
-            $this->syncOrderStatus($orderId);
+            $this->orderService->syncOrderStatus($orderId);
         }
 
         return back()->with('success', [
@@ -1190,213 +970,5 @@ class RestaurantPosController extends Controller
     {
         $mode = AppSetting::current()->business_mode ?: 'minorista';
         abort_unless($mode === 'restaurante', 404);
-    }
-
-    private function syncOrderStatus(int $orderId): void
-    {
-        if ($orderId <= 0) {
-            return;
-        }
-
-        $order = RestaurantOrder::query()
-            ->with('items:id,restaurant_order_id,kitchen_status')
-            ->find($orderId);
-
-        if (! $order) {
-            return;
-        }
-
-        $statuses = $order->items->pluck('kitchen_status')->values();
-        $activeStatuses = $statuses
-            ->filter(fn (string $status) => $status !== 'canceled')
-            ->values();
-
-        if ($activeStatuses->isEmpty() || $activeStatuses->every(fn (string $status) => $status === 'served')) {
-            $order->update([
-                'status' => 'completed',
-                'completed_at' => now(),
-            ]);
-
-            return;
-        }
-
-        if ($activeStatuses->contains('ready') && ! $activeStatuses->contains('pending') && ! $activeStatuses->contains('preparing')) {
-            $order->update([
-                'status' => 'ready',
-                'completed_at' => null,
-            ]);
-
-            return;
-        }
-
-        if ($activeStatuses->contains('preparing') || ($activeStatuses->contains('ready') && $activeStatuses->contains('pending'))) {
-            $order->update([
-                'status' => 'preparing',
-                'completed_at' => null,
-            ]);
-
-            return;
-        }
-
-        $order->update([
-            'status' => 'pending',
-            'completed_at' => null,
-        ]);
-    }
-
-    private function consumeInventoryForServedItem(RestaurantAccountItem $item, int $userId): void
-    {
-        $item->loadMissing([
-            'product:id,name,stock',
-            'order:id',
-            'product.recipe' => function ($query) {
-                $query->with('items:id,product_recipe_id,ingredient_product_id,quantity');
-            },
-        ]);
-
-        $activeConsumptions = RestaurantItemConsumption::query()
-            ->where('restaurant_account_item_id', $item->id)
-            ->whereNull('reversed_at')
-            ->exists();
-        if ($activeConsumptions) {
-            return;
-        }
-
-        $servedQuantity = max(1, (int) $item->quantity);
-        $recipe = $item->product?->recipe;
-        $recipeItems = collect($recipe?->items ?? [])->filter(fn ($ingredient) => (int) $ingredient->quantity > 0);
-
-        if ($recipe && $recipe->is_active && $recipeItems->isNotEmpty()) {
-            $ingredientIds = $recipeItems->pluck('ingredient_product_id')->map(fn ($id) => (int) $id)->values();
-            $ingredients = Product::query()
-                ->whereIn('id', $ingredientIds)
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
-
-            foreach ($recipeItems as $recipeItem) {
-                /** @var Product|null $ingredient */
-                $ingredient = $ingredients->get((int) $recipeItem->ingredient_product_id);
-                $required = (int) $recipeItem->quantity * $servedQuantity;
-
-                if (! $ingredient || (int) $ingredient->stock < $required) {
-                    $name = $ingredient?->name ?: 'insumo';
-                    throw ValidationException::withMessages([
-                        'restaurant' => "Stock insuficiente de {$name} para entregar esta orden.",
-                    ]);
-                }
-            }
-
-            foreach ($recipeItems as $recipeItem) {
-                /** @var Product $ingredient */
-                $ingredient = $ingredients->get((int) $recipeItem->ingredient_product_id);
-                $required = (int) $recipeItem->quantity * $servedQuantity;
-
-                $ingredient->decrement('stock', $required);
-
-                InventoryMovement::create([
-                    'product_id' => $ingredient->id,
-                    'user_id' => $userId,
-                    'type' => 'recipe_served',
-                    'quantity' => -$required,
-                    'note' => 'Consumo receta · Orden #' . ($item->order?->id ?: $item->restaurant_order_id) . ' · ' . ($item->product?->name ?: 'Producto'),
-                ]);
-
-                RestaurantItemConsumption::create([
-                    'restaurant_account_item_id' => $item->id,
-                    'product_id' => $ingredient->id,
-                    'quantity' => $required,
-                    'source_type' => 'recipe',
-                ]);
-            }
-
-            return;
-        }
-
-        $product = Product::query()->lockForUpdate()->find((int) $item->product_id);
-        if (! $product || (int) $product->stock < $servedQuantity) {
-            throw ValidationException::withMessages([
-                'restaurant' => 'Stock insuficiente del producto para marcar como entregado.',
-            ]);
-        }
-
-        $product->decrement('stock', $servedQuantity);
-
-        InventoryMovement::create([
-            'product_id' => $product->id,
-            'user_id' => $userId,
-            'type' => 'restaurant_served',
-            'quantity' => -$servedQuantity,
-            'note' => 'Entrega restaurante · Orden #' . ($item->order?->id ?: $item->restaurant_order_id),
-        ]);
-
-        RestaurantItemConsumption::create([
-            'restaurant_account_item_id' => $item->id,
-            'product_id' => $product->id,
-            'quantity' => $servedQuantity,
-            'source_type' => 'product',
-        ]);
-    }
-
-    private function reverseConsumptionsForCanceledItem(RestaurantAccountItem $item, int $userId): void
-    {
-        $consumptions = RestaurantItemConsumption::query()
-            ->where('restaurant_account_item_id', $item->id)
-            ->whereNull('reversed_at')
-            ->lockForUpdate()
-            ->get();
-
-        if ($consumptions->isEmpty()) {
-            return;
-        }
-
-        $productIds = $consumptions->pluck('product_id')->map(fn ($id) => (int) $id)->unique()->values();
-        $products = Product::query()
-            ->whereIn('id', $productIds)
-            ->lockForUpdate()
-            ->get()
-            ->keyBy('id');
-
-        foreach ($consumptions as $consumption) {
-            /** @var Product|null $product */
-            $product = $products->get((int) $consumption->product_id);
-            if (! $product) {
-                continue;
-            }
-
-            $qty = max(1, (int) $consumption->quantity);
-            $product->increment('stock', $qty);
-
-            InventoryMovement::create([
-                'product_id' => $product->id,
-                'user_id' => $userId,
-                'type' => 'restaurant_cancel_restock',
-                'quantity' => $qty,
-                'note' => 'Reverso por anulación ítem restaurante #' . $item->id,
-            ]);
-
-            $consumption->update([
-                'reversed_by_user_id' => $userId,
-                'reversed_at' => now(),
-            ]);
-        }
-    }
-
-    private function generateRestaurantSaleCode(): string
-    {
-        $prefix = 'R' . now()->format('Ymd');
-        $lastCode = Sale::query()
-            ->where('sale_code', 'like', $prefix . '-%')
-            ->orderByDesc('sale_code')
-            ->value('sale_code');
-
-        if (! $lastCode) {
-            return $prefix . '-0001';
-        }
-
-        $currentNumber = (int) substr((string) $lastCode, strrpos((string) $lastCode, '-') + 1);
-        $nextNumber = str_pad((string) ($currentNumber + 1), 4, '0', STR_PAD_LEFT);
-
-        return $prefix . '-' . $nextNumber;
     }
 }

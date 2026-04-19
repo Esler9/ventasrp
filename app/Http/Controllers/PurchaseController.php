@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Purchase;
@@ -89,9 +90,10 @@ class PurchaseController extends Controller
     public function create(): Response
     {
         return Inertia::render('Purchases/Form', [
-            'purchase'  => null,
-            'suppliers' => $this->supplierOptions(),
-            'products'  => $this->productOptions(),
+            'purchase'   => null,
+            'suppliers'  => $this->supplierOptions(),
+            'products'   => $this->productOptions(),
+            'categories' => $this->categoryOptions(),
         ]);
     }
 
@@ -128,9 +130,10 @@ class PurchaseController extends Controller
         }
 
         return Inertia::render('Purchases/Form', [
-            'purchase'  => $this->purchaseData($purchase),
-            'suppliers' => $this->supplierOptions(),
-            'products'  => $this->productOptions(),
+            'purchase'   => $this->purchaseData($purchase),
+            'suppliers'  => $this->supplierOptions(),
+            'products'   => $this->productOptions(),
+            'categories' => $this->categoryOptions(),
         ]);
     }
 
@@ -363,6 +366,17 @@ class PurchaseController extends Controller
                 ])
                 ->values(),
         ];
+    }
+
+    private function categoryOptions(): array
+    {
+        return Category::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])
+            ->values()
+            ->all();
     }
 
     private function supplierOptions(): array

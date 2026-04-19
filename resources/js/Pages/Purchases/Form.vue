@@ -65,7 +65,7 @@
                         @focus="showDropdown = true"
                     />
                     <!-- Dropdown resultados -->
-                    <div v-if="showDropdown && filteredProducts.length"
+                    <div v-if="showDropdown && (filteredProducts.length || productSearch.trim())"
                         class="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-gray-700 bg-gray-900 shadow-xl">
                         <button
                             v-for="p in filteredProducts"
@@ -81,6 +81,14 @@
                             <span class="text-xs text-gray-400">
                                 Stock: {{ p.stock }} · CPP actual: Q{{ money(p.cost_price) }}
                             </span>
+                        </button>
+                        <button
+                            type="button"
+                            class="flex w-full items-center gap-2 border-t border-gray-700 px-3 py-2.5 text-left text-sm text-amber-400 hover:bg-gray-800"
+                            @click="openQuickCreate"
+                        >
+                            <i class="fa-solid fa-plus"></i>
+                            Crear producto nuevo{{ productSearch.trim() ? `: "${productSearch.trim()}"` : '' }}
                         </button>
                     </div>
                 </div>
@@ -210,19 +218,193 @@
             </section>
 
         </form>
+
+        <!-- Modal: crear producto rápido -->
+        <Teleport to="body">
+            <Transition
+                enter-active-class="transition duration-200 ease-out"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition duration-150 ease-in"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
+            >
+                <div v-if="quickCreate.open"
+                    class="fixed inset-0 z-50 flex items-start justify-center bg-black/70 px-4 py-6 overflow-y-auto"
+                    @click.self="quickCreate.open = false">
+                    <div class="w-full max-w-lg rounded-2xl border border-gray-700 bg-gray-900 shadow-2xl my-auto">
+
+                        <!-- Cabecera -->
+                        <div class="flex items-center justify-between border-b border-gray-800 px-5 py-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-100">Nuevo producto</h3>
+                                <p class="text-xs text-gray-500">El producto se agregará a esta compra y quedará activo en el sistema.</p>
+                            </div>
+                            <button type="button" class="rounded-lg p-1.5 text-gray-500 hover:bg-gray-800 hover:text-gray-200" @click="quickCreate.open = false">
+                                <i class="fa-solid fa-xmark text-base"></i>
+                            </button>
+                        </div>
+
+                        <!-- Cuerpo -->
+                        <div class="space-y-5 px-5 py-4">
+
+                            <!-- Foto -->
+                            <div class="flex items-center gap-4">
+                                <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gray-800 ring-1 ring-black/30">
+                                    <img v-if="quickCreate.photoPreview" :src="quickCreate.photoPreview" alt="Foto" class="h-full w-full object-cover" />
+                                    <div v-else class="flex h-full w-full items-center justify-center text-gray-600">
+                                        <i class="fa-solid fa-image text-xl"></i>
+                                    </div>
+                                </div>
+                                <label class="cursor-pointer rounded-xl border border-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-gray-800">
+                                    <i class="fa-solid fa-upload mr-1"></i> Subir foto
+                                    <input type="file" accept="image/*" class="hidden" @change="onQuickCreatePhoto" />
+                                </label>
+                                <button v-if="quickCreate.photoPreview" type="button"
+                                    class="text-xs text-red-400 hover:text-red-300"
+                                    @click="quickCreate.photoFile = null; quickCreate.photoPreview = null">
+                                    Quitar
+                                </button>
+                            </div>
+
+                            <!-- Nombre + SKU -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="col-span-2">
+                                    <label class="text-xs text-gray-400">Nombre <span class="text-red-400">*</span></label>
+                                    <input v-model="quickCreate.name" type="text" autofocus
+                                        class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400" />
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400">SKU / Código</label>
+                                    <input v-model="quickCreate.sku" type="text" placeholder="Auto-generado"
+                                        class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400" />
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400">Unidad <span class="text-red-400">*</span></label>
+                                    <input v-model="quickCreate.unit_label" type="text" placeholder="Ej: Unidad, Kg, Caja"
+                                        class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400" />
+                                </div>
+                            </div>
+
+                            <!-- Categoría + crear categoría -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-xs text-gray-400">Categoría <span class="text-red-400">*</span></label>
+                                    <button type="button"
+                                        class="rounded-md border border-gray-700 px-2 py-0.5 text-[11px] font-semibold text-gray-300 hover:bg-gray-800"
+                                        @click="quickCreate.newCategoryOpen = !quickCreate.newCategoryOpen; quickCreate.newCategoryName = ''; quickCreate.newCategoryError = ''">
+                                        {{ quickCreate.newCategoryOpen ? 'Cancelar' : '+ Nueva categoría' }}
+                                    </button>
+                                </div>
+                                <select v-model="quickCreate.category_id"
+                                    class="w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400">
+                                    <option :value="null">— Seleccionar —</option>
+                                    <option v-for="c in localCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
+                                </select>
+                                <!-- Formulario inline nueva categoría -->
+                                <div v-if="quickCreate.newCategoryOpen" class="mt-2 space-y-2 rounded-xl border border-gray-700 bg-gray-950/60 p-3">
+                                    <input v-model="quickCreate.newCategoryName" type="text" placeholder="Nombre de categoría"
+                                        class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100 focus:border-amber-400" />
+                                    <input v-model="quickCreate.newCategoryDesc" type="text" placeholder="Descripción (opcional)"
+                                        class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100 focus:border-amber-400" />
+                                    <p v-if="quickCreate.newCategoryError" class="text-xs text-red-400">{{ quickCreate.newCategoryError }}</p>
+                                    <button type="button"
+                                        class="w-full rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/30 disabled:opacity-50"
+                                        :disabled="quickCreate.newCategorySaving"
+                                        @click="saveQuickCategory">
+                                        {{ quickCreate.newCategorySaving ? 'Guardando...' : 'Guardar categoría' }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Descripción -->
+                            <div>
+                                <label class="text-xs text-gray-400">Descripción</label>
+                                <textarea v-model="quickCreate.description" rows="2" placeholder="Opcional"
+                                    class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400 resize-none"></textarea>
+                            </div>
+
+                            <!-- Precios -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs text-gray-400">Precio venta <span class="text-red-400">*</span></label>
+                                    <div class="mt-1 flex items-center gap-1">
+                                        <span class="text-xs text-gray-500">Q</span>
+                                        <input v-model.number="quickCreate.price" type="number" min="0" step="0.01"
+                                            class="w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400">Costo compra <span class="text-red-400">*</span></label>
+                                    <div class="mt-1 flex items-center gap-1">
+                                        <span class="text-xs text-gray-500">Q</span>
+                                        <input v-model.number="quickCreate.cost_price" type="number" min="0" step="0.0001"
+                                            class="w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Stock alert + vencimiento + activo -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs text-gray-400">Stock de alerta</label>
+                                    <input v-model.number="quickCreate.stock_alert" type="number" min="0"
+                                        class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400" />
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400">Fecha vencimiento</label>
+                                    <input v-model="quickCreate.expires_at" type="date"
+                                        class="mt-1 w-full rounded-xl border border-gray-700 bg-gray-950/80 px-3 py-2 text-sm text-gray-100 focus:border-amber-400" />
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input id="qc-active" v-model="quickCreate.is_active" type="checkbox"
+                                    class="h-4 w-4 rounded border-gray-700 bg-gray-900 text-amber-400 focus:ring-amber-500" />
+                                <label for="qc-active" class="text-sm text-gray-300">Producto activo</label>
+                            </div>
+
+                            <p v-if="quickCreate.error" class="rounded-lg border border-red-700/40 bg-red-950/20 px-3 py-2 text-xs text-red-300">
+                                {{ quickCreate.error }}
+                            </p>
+                        </div>
+
+                        <!-- Pie -->
+                        <div class="flex justify-end gap-2 border-t border-gray-800 px-5 py-4">
+                            <button type="button"
+                                class="rounded-xl border border-gray-600 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800"
+                                @click="quickCreate.open = false">
+                                Cancelar
+                            </button>
+                            <button type="button"
+                                class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-amber-400 disabled:opacity-50"
+                                :disabled="quickCreate.saving"
+                                @click="submitQuickCreate">
+                                <i class="fa-solid fa-floppy-disk mr-1"></i>
+                                {{ quickCreate.saving ? 'Guardando...' : 'Crear y agregar' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
     </AppLayout>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import axios from 'axios';
 
 const props = defineProps({
-    purchase:  { type: Object, default: null },
-    suppliers: { type: Array,  default: () => [] },
-    products:  { type: Array,  default: () => [] },
+    purchase:   { type: Object, default: null },
+    suppliers:  { type: Array,  default: () => [] },
+    products:   { type: Array,  default: () => [] },
+    categories: { type: Array,  default: () => [] },
 });
+
+const localProducts   = ref([...props.products]);
+const localCategories = ref([...props.categories]);
 
 // ── Formulario ──────────────────────────────────────────────────────────────
 const form = useForm({
@@ -253,11 +435,140 @@ const showDropdown  = ref(false);
 
 const filteredProducts = computed(() => {
     const q = productSearch.value.toLowerCase().trim();
-    if (!q) return props.products.slice(0, 12);
-    return props.products
+    if (!q) return localProducts.value.slice(0, 12);
+    return localProducts.value
         .filter(p => p.name.toLowerCase().includes(q) || (p.sku ?? '').toLowerCase().includes(q))
         .slice(0, 12);
 });
+
+// ── Crear producto rápido ─────────────────────────────────────────────────────
+const quickCreate = reactive({
+    open: false,
+    saving: false,
+    error: '',
+    // Campos básicos
+    name: '',
+    sku: '',
+    unit_label: '',
+    description: '',
+    // Categoría
+    category_id: null,
+    newCategoryOpen: false,
+    newCategoryName: '',
+    newCategoryDesc: '',
+    newCategoryError: '',
+    newCategorySaving: false,
+    // Precios
+    price: 0,
+    cost_price: 0,
+    // Extras
+    stock_alert: 0,
+    expires_at: '',
+    is_active: true,
+    // Foto
+    photoFile: null,
+    photoPreview: null,
+});
+
+const openQuickCreate = () => {
+    Object.assign(quickCreate, {
+        open: true,
+        saving: false,
+        error: '',
+        name: productSearch.value.trim(),
+        sku: '',
+        unit_label: '',
+        description: '',
+        category_id: null,
+        newCategoryOpen: false,
+        newCategoryName: '',
+        newCategoryDesc: '',
+        newCategoryError: '',
+        newCategorySaving: false,
+        price: 0,
+        cost_price: 0,
+        stock_alert: 0,
+        expires_at: '',
+        is_active: true,
+        photoFile: null,
+        photoPreview: null,
+    });
+    showDropdown.value = false;
+};
+
+const onQuickCreatePhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    quickCreate.photoFile    = file;
+    quickCreate.photoPreview = URL.createObjectURL(file);
+};
+
+const saveQuickCategory = async () => {
+    const name = quickCreate.newCategoryName.trim();
+    if (!name) { quickCreate.newCategoryError = 'Ingresa el nombre de la categoría.'; return; }
+    quickCreate.newCategorySaving = true;
+    quickCreate.newCategoryError  = '';
+    try {
+        const { data } = await axios.post('/admin/categories', {
+            name,
+            description: quickCreate.newCategoryDesc.trim() || null,
+            is_active: true,
+        }, { headers: { Accept: 'application/json' } });
+        const created = { id: Number(data.id), name: data.name };
+        localCategories.value = [...localCategories.value, created]
+            .sort((a, b) => a.name.localeCompare(b.name));
+        quickCreate.category_id      = created.id;
+        quickCreate.newCategoryOpen  = false;
+        quickCreate.newCategoryName  = '';
+        quickCreate.newCategoryDesc  = '';
+    } catch (e) {
+        quickCreate.newCategoryError = e?.response?.data?.errors?.name?.[0]
+            || e?.response?.data?.message
+            || 'No se pudo crear la categoría.';
+    } finally {
+        quickCreate.newCategorySaving = false;
+    }
+};
+
+const submitQuickCreate = async () => {
+    quickCreate.error = '';
+    if (!quickCreate.name.trim())       { quickCreate.error = 'El nombre es requerido.'; return; }
+    if (!quickCreate.unit_label.trim()) { quickCreate.error = 'La unidad es requerida.'; return; }
+    if (!quickCreate.category_id)       { quickCreate.error = 'Selecciona una categoría.'; return; }
+
+    quickCreate.saving = true;
+    try {
+        const fd = new FormData();
+        fd.append('name',        quickCreate.name.trim());
+        fd.append('unit_label',  quickCreate.unit_label.trim());
+        fd.append('category_id', quickCreate.category_id);
+        fd.append('price',       quickCreate.price);
+        fd.append('cost_price',  quickCreate.cost_price);
+        fd.append('stock_alert', quickCreate.stock_alert ?? 0);
+        fd.append('is_active',   quickCreate.is_active ? '1' : '0');
+        if (quickCreate.sku.trim())         fd.append('sku',         quickCreate.sku.trim());
+        if (quickCreate.description.trim()) fd.append('description', quickCreate.description.trim());
+        if (quickCreate.expires_at)         fd.append('expires_at',  quickCreate.expires_at);
+        if (quickCreate.photoFile)          fd.append('photo',       quickCreate.photoFile);
+
+        const { data } = await axios.post('/admin/products/quick-store', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+
+        localProducts.value.push(data);
+        localProducts.value.sort((a, b) => a.name.localeCompare(b.name));
+        addItem(data);
+        quickCreate.open    = false;
+        productSearch.value = '';
+    } catch (e) {
+        const errors = e?.response?.data?.errors;
+        quickCreate.error = errors
+            ? Object.values(errors).flat().join(' ')
+            : 'Error al crear el producto.';
+    } finally {
+        quickCreate.saving = false;
+    }
+};
 
 // Cerrar dropdown al hacer click fuera
 if (typeof document !== 'undefined') {

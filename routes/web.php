@@ -67,6 +67,7 @@ Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
     Route::get('/products', [ProductController::class, 'index'])->middleware('permission:products.view')->name('products.index');
     Route::get('/products/create', [ProductController::class, 'create'])->middleware('permission:products.create')->name('products.create');
     Route::post('/products', [ProductController::class, 'store'])->middleware('permission:products.create')->name('products.store');
+    Route::post('/products/quick-store', [ProductController::class, 'quickStore'])->middleware('permission:products.create')->name('products.quick-store');
     Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->middleware('permission:products.edit')->name('products.edit');
     Route::match(['put', 'patch', 'post'], '/products/{product}', [ProductController::class, 'update'])->middleware('permission:products.edit')->name('products.update');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('permission:products.delete')->name('products.destroy');
