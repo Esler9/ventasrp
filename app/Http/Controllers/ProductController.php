@@ -129,6 +129,45 @@ class ProductController extends Controller
             ]);
     }
 
+    public function quickStore(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validate([
+            'category_id'  => ['required', 'integer', 'exists:categories,id'],
+            'name'         => ['required', 'string', 'max:255'],
+            'unit_label'   => ['required', 'string', 'max:50'],
+            'sku'          => ['nullable', 'string', 'max:255', 'unique:products,sku'],
+            'description'  => ['nullable', 'string', 'max:2000'],
+            'price'        => ['required', 'numeric', 'min:0'],
+            'cost_price'   => ['required', 'numeric', 'min:0'],
+            'stock_alert'  => ['nullable', 'integer', 'min:0'],
+            'expires_at'   => ['nullable', 'date'],
+            'is_active'    => ['nullable', 'boolean'],
+            'photo'        => ['nullable', 'image'],
+        ]);
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('', 'public_products');
+            $data['photo'] = 'products/' . ltrim($path, '/');
+        }
+
+        $data['stock']       = 0;
+        $data['stock_alert'] = (int) ($data['stock_alert'] ?? 0);
+        $data['is_active']   = (bool) ($data['is_active'] ?? true);
+
+        $this->ensureSku($data);
+
+        $product = Product::create($data);
+
+        return response()->json([
+            'id'         => $product->id,
+            'name'       => $product->name,
+            'sku'        => $product->sku,
+            'unit_label' => $product->unit_label,
+            'cost_price' => (float) $product->cost_price,
+            'stock'      => (int) $product->stock,
+        ]);
+    }
+
     public function edit(Product $product): Response
     {
         return Inertia::render('Products/Form', [
