@@ -25,9 +25,9 @@ class ReportController extends Controller
         $sellerId = $request->query('seller_id');
 
         $salesBase = Sale::query()
-            ->when($dateFrom !== '', fn ($query) => $query->whereDate('created_at', '>=', $dateFrom))
-            ->when($dateTo !== '', fn ($query) => $query->whereDate('created_at', '<=', $dateTo))
-            ->when($sellerId, fn ($query) => $query->where('user_id', $sellerId));
+            ->when($dateFrom !== '', fn ($query) => $query->whereDate('sales.created_at', '>=', $dateFrom))
+            ->when($dateTo !== '', fn ($query) => $query->whereDate('sales.created_at', '<=', $dateTo))
+            ->when($sellerId, fn ($query) => $query->where('sales.user_id', $sellerId));
 
         $salesCount = (clone $salesBase)->count();
         $revenue = (float) ((clone $salesBase)->sum('total'));
@@ -43,11 +43,11 @@ class ReportController extends Controller
         $discounts = (float) ((clone $itemsBase)->sum('sale_items.discount_amount'));
 
         $salesByDay = (clone $salesBase)
-            ->selectRaw('DATE(created_at) as day')
+            ->selectRaw('DATE(sales.created_at) as day')
             ->selectRaw('COUNT(*) as orders')
-            ->selectRaw('SUM(total) as revenue')
-            ->groupBy(DB::raw('DATE(created_at)'))
-            ->orderBy(DB::raw('DATE(created_at)'))
+            ->selectRaw('SUM(sales.total) as revenue')
+            ->groupBy(DB::raw('DATE(sales.created_at)'))
+            ->orderBy(DB::raw('DATE(sales.created_at)'))
             ->get()
             ->map(fn ($row) => [
                 'day' => (string) $row->day,
