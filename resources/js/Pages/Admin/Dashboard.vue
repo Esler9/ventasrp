@@ -1,65 +1,65 @@
 <template>
-    <div class="min-h-screen bg-slate-950 text-slate-100">
+    <div class="min-h-screen bg-gray-950 text-gray-100">
         <GlobalLoader />
         <div class="mx-auto w-full max-w-7xl px-4 pt-3 sm:px-5 lg:px-6">
             <FlashBanner />
         </div>
 
         <main class="mx-auto w-full max-w-7xl px-4 pb-24 pt-2 sm:px-5 md:pb-28 lg:px-6 lg:pb-8" :style="contentSafeArea">
-            <section class="rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950 via-[#0a1a2d] to-[#081626] p-4 shadow-2xl shadow-black/30 sm:p-5 lg:p-6">
-                <header class="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/70 pb-4 lg:mb-6 lg:pb-5">
+            <section class="rounded-2xl dashboard-hero border border-gray-800 p-4 shadow-2xl shadow-black/20 sm:p-5 lg:p-6">
+                <header class="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-4 lg:mb-6 lg:pb-5">
                     <div class="flex items-center gap-3">
                         <div class="grid h-10 w-10 place-items-center rounded-full bg-sky-500/20 text-sky-300 lg:h-12 lg:w-12">
                             <i class="fa-solid fa-store text-sm"></i>
                         </div>
                         <div>
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">Sucursal</p>
-                            <p class="text-xl font-bold leading-5 text-slate-100 lg:text-2xl lg:leading-6">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-gray-400">Sucursal</p>
+                            <p class="text-xl font-bold leading-5 text-gray-100 lg:text-2xl lg:leading-6">
                                 {{ branchName }}
-                                <i class="fa-solid fa-angle-down ml-1 text-xs text-slate-500"></i>
+                                <i class="fa-solid fa-angle-down ml-1 text-xs text-gray-500"></i>
                             </p>
                         </div>
                     </div>
-                    <button type="button" class="relative grid h-10 w-10 place-items-center rounded-full bg-slate-900/70 text-slate-300" title="Notificaciones">
+                    <button type="button" class="relative grid h-10 w-10 place-items-center rounded-full bg-gray-900/70 text-gray-300" title="Notificaciones">
                         <i class="fa-regular fa-bell"></i>
                         <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500"></span>
                     </button>
                 </header>
 
                 <section>
-                    <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.13em] text-slate-400">Resumen financiero</h2>
+                    <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.13em] text-gray-400">Resumen financiero</h2>
                     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
                         <article class="rounded-xl border border-sky-400/30 bg-gradient-to-br from-sky-700 to-sky-500 p-3 lg:p-4">
                             <p class="text-xs text-sky-100/90">Ventas hoy</p>
                             <p class="mt-1 text-3xl font-extrabold leading-none lg:text-[2rem]">{{ currencySymbol }}{{ money(financialSummary.sales_today) }}</p>
-                            <span class="mt-2 inline-flex rounded-full bg-slate-950/30 px-2 py-0.5 text-[11px] font-semibold">
+                            <span class="mt-2 inline-flex rounded-full bg-gray-950/30 px-2 py-0.5 text-[11px] font-semibold">
                                 {{ trend(financialSummary.sales_today_trend) }}
                             </span>
                         </article>
 
-                        <article class="rounded-xl border border-slate-700 bg-slate-800/70 p-3 lg:p-4">
-                            <p class="text-xs text-slate-400">Utilidad hoy</p>
+                        <article class="rounded-xl border border-gray-700 bg-gray-850 p-3 lg:p-4">
+                            <p class="text-xs text-gray-400">Utilidad hoy</p>
                             <p class="mt-1 text-3xl font-extrabold leading-none text-sky-300 lg:text-[2rem]">{{ currencySymbol }}{{ money(financialSummary.utility_today) }}</p>
                             <span class="mt-2 inline-flex rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
                                 {{ trend(financialSummary.utility_today_trend) }}
                             </span>
                         </article>
 
-                        <article class="rounded-xl border border-slate-700 bg-slate-800/70 p-3 lg:p-4">
-                            <p class="text-xs text-slate-400">Ventas del mes</p>
+                        <article class="rounded-xl border border-gray-700 bg-gray-850 p-3 lg:p-4">
+                            <p class="text-xs text-gray-400">Ventas del mes</p>
                             <p class="mt-1 text-3xl font-extrabold leading-none lg:text-[2rem]">{{ currencySymbol }}{{ money(financialSummary.sales_month) }}</p>
                             <div class="mt-3">
-                                <div class="h-1.5 overflow-hidden rounded-full bg-slate-700">
+                                <div class="h-1.5 overflow-hidden rounded-full bg-gray-800">
                                     <div class="h-full rounded-full bg-sky-400" :style="{ width: `${financialSummary.sales_month_progress}%` }"></div>
                                 </div>
-                                <p class="mt-1 text-[11px] text-slate-500">Meta: {{ currencySymbol }}{{ money(financialSummary.sales_month_goal) }}</p>
+                                <p class="mt-1 text-[11px] text-gray-500">Meta: {{ currencySymbol }}{{ money(financialSummary.sales_month_goal) }}</p>
                             </div>
                         </article>
 
-                        <article class="rounded-xl border border-slate-700 bg-slate-800/70 p-3 lg:p-4">
-                            <p class="text-xs text-slate-400">Saldo en Bancos</p>
+                        <article class="rounded-xl border border-gray-700 bg-gray-850 p-3 lg:p-4">
+                            <p class="text-xs text-gray-400">Saldo en Bancos</p>
                             <p class="mt-1 text-3xl font-extrabold leading-none lg:text-[2rem]">{{ currencySymbol }}{{ money(financialSummary.bank_balance) }}</p>
-                            <p class="mt-2 text-[11px] text-slate-400">
+                            <p class="mt-2 text-[11px] text-gray-400">
                                 <i class="fa-solid fa-building-columns mr-1 text-[10px]"></i>{{ financialSummary.bank_balance_label }}
                             </p>
                         </article>
@@ -68,51 +68,51 @@
 
                 <div class="mt-6 grid gap-5 md:gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(21rem,24rem)] xl:items-start">
                     <section>
-                        <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.13em] text-slate-400">Acciones rápidas</h2>
+                        <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.13em] text-gray-400">Acciones rápidas</h2>
                         <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                             <Link
                                 v-for="action in quickActions"
                                 :key="action.key"
                                 :href="action.href"
-                                class="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-800/70 px-3 py-3 transition-colors hover:bg-slate-700/70 lg:px-4"
+                                class="flex items-center gap-3 rounded-xl border border-gray-700 bg-gray-850 px-3 py-3 transition-colors hover:bg-gray-800 lg:px-4"
                             >
                                 <div class="grid h-9 w-9 place-items-center rounded-lg" :class="action.icon_bg">
                                     <i :class="action.icon"></i>
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <p class="truncate text-[15px] font-semibold leading-tight text-slate-100">{{ action.title }}</p>
-                                    <p class="truncate text-xs text-slate-400">{{ action.subtitle }}</p>
+                                    <p class="truncate text-[15px] font-semibold leading-tight text-gray-100">{{ action.title }}</p>
+                                    <p class="truncate text-xs text-gray-400">{{ action.subtitle }}</p>
                                 </div>
-                                <i class="fa-solid fa-chevron-right text-xs text-slate-500"></i>
+                                <i class="fa-solid fa-chevron-right text-xs text-gray-500"></i>
                             </Link>
                         </div>
                     </section>
 
                     <section class="xl:sticky xl:top-24">
                         <div class="mb-3 flex items-center justify-between">
-                            <h2 class="text-xs font-semibold uppercase tracking-[0.13em] text-slate-400">Actividad reciente</h2>
+                            <h2 class="text-xs font-semibold uppercase tracking-[0.13em] text-gray-400">Actividad reciente</h2>
                             <Link href="/admin/sales" class="text-xs font-semibold text-sky-400">Ver todo</Link>
                         </div>
-                        <div class="rounded-xl border border-slate-700 bg-slate-800/70 px-3 xl:max-h-[28rem] xl:overflow-y-auto">
+                        <div class="rounded-xl border border-gray-700 bg-gray-850 px-3 xl:max-h-[28rem] xl:overflow-y-auto">
                             <article
                                 v-for="(activity, index) in recentActivity"
                                 :key="activity.id"
                                 class="flex items-center gap-3 py-3"
-                                :class="{ 'border-b border-slate-700/80': index < recentActivity.length - 1 }"
+                                :class="{ 'border-b border-gray-700': index < recentActivity.length - 1 }"
                             >
-                                <div class="grid h-8 w-8 place-items-center rounded-full bg-slate-700 text-slate-300">
+                                <div class="grid h-8 w-8 place-items-center rounded-full bg-gray-800 text-gray-300">
                                     <i class="fa-solid fa-receipt text-xs"></i>
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <p class="truncate text-sm font-semibold text-slate-100">{{ activity.title }}</p>
-                                    <p class="truncate text-xs text-slate-400">{{ relativeTime(activity.created_at) }} · {{ activity.subtitle }}</p>
+                                    <p class="truncate text-sm font-semibold text-gray-100">{{ activity.title }}</p>
+                                    <p class="truncate text-xs text-gray-400">{{ relativeTime(activity.created_at) }} · {{ activity.subtitle }}</p>
                                 </div>
                                 <p v-if="activity.amount !== null" class="text-sm font-semibold text-emerald-400">
                                     {{ activity.amount_prefix }}{{ currencySymbol }}{{ money(activity.amount) }}
                                 </p>
-                                <p v-else class="text-sm font-semibold text-slate-500">-</p>
+                                <p v-else class="text-sm font-semibold text-gray-500">-</p>
                             </article>
-                            <p v-if="!recentActivity.length" class="py-4 text-center text-xs text-slate-500">
+                            <p v-if="!recentActivity.length" class="py-4 text-center text-xs text-gray-500">
                                 Aún no hay actividad reciente para mostrar.
                             </p>
                         </div>

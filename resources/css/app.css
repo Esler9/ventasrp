@@ -28,17 +28,17 @@
 }
 
 [data-theme='light'] {
-    --bg-950: #f8fafc;
+    --bg-950: #f1f5f9;
     --bg-900: #ffffff;
-    --bg-850: #f1f5f9;
-    --bg-800: #e2e8f0;
+    --bg-850: #f8fafc;
+    --bg-800: #eef2f7;
     --text-50: #0f172a;
-    --text-100: #0f172a;
-    --text-200: #1f2937;
-    --text-300: #334155;
-    --text-400: #475569;
-    --text-500: #64748b;
-    --border-700: #cbd5e1;
+    --text-100: #1e293b;
+    --text-200: #334155;
+    --text-300: #475569;
+    --text-400: #64748b;
+    --text-500: #94a3b8;
+    --border-700: #e2e8f0;
     --border-800: #cbd5e1;
 }
 
@@ -84,12 +84,24 @@ body {
     background-color: color-mix(in srgb, var(--bg-950) 60%, transparent) !important;
 }
 
+.bg-gray-950\/30 {
+    background-color: color-mix(in srgb, var(--bg-950) 30%, transparent) !important;
+}
+
 .bg-gray-850 {
     background-color: var(--bg-850) !important;
 }
 
 .bg-gray-800 {
     background-color: var(--bg-800) !important;
+}
+
+.bg-gray-800\/70 {
+    background-color: color-mix(in srgb, var(--bg-800) 70%, transparent) !important;
+}
+
+.bg-gray-800\/50 {
+    background-color: color-mix(in srgb, var(--bg-800) 50%, transparent) !important;
 }
 
 .text-gray-50 {
@@ -124,6 +136,22 @@ body {
     border-color: var(--border-800) !important;
 }
 
+.border-gray-800\/80 {
+    border-color: color-mix(in srgb, var(--border-800) 80%, transparent) !important;
+}
+
+.border-gray-800\/60 {
+    border-color: color-mix(in srgb, var(--border-800) 60%, transparent) !important;
+}
+
+.border-gray-700\/80 {
+    border-color: color-mix(in srgb, var(--border-700) 80%, transparent) !important;
+}
+
+.border-gray-700\/60 {
+    border-color: color-mix(in srgb, var(--border-700) 60%, transparent) !important;
+}
+
 .bg-brand-primary {
     background-color: var(--brand-primary) !important;
 }
@@ -142,6 +170,26 @@ body {
 
 .border-brand-primary {
     border-color: var(--brand-primary) !important;
+}
+
+.dashboard-hero {
+    background: linear-gradient(to bottom, #0f172a, #0a1a2d, #081626);
+}
+
+[data-theme='light'] .dashboard-hero {
+    background-color: var(--bg-900);
+}
+
+[data-theme='light'] .text-amber-200 {
+    color: #b45309 !important;
+}
+
+[data-theme='light'] .hover\:text-amber-200:hover {
+    color: #b45309 !important;
+}
+
+[data-theme='light'] .text-amber-300 {
+    color: #b45309 !important;
 }
 
 @layer utilities {
