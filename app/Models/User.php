@@ -22,6 +22,7 @@ class User extends Authenticatable
         'username',
         'email',
         'role',
+        'extra_permissions',
         'pin',
         'password',
     ];
@@ -48,7 +49,20 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'pin' => 'hashed',
+            'extra_permissions' => 'array',
         ];
+    }
+
+    public function roleModel(): ?Role
+    {
+        static $cache = [];
+        $key = $this->roleKey();
+
+        if (! array_key_exists($key, $cache)) {
+            $cache[$key] = Role::where('key', $key)->first();
+        }
+
+        return $cache[$key];
     }
 
     public function isAdmin(): bool
@@ -78,6 +92,11 @@ class User extends Authenticatable
 
     public function roleLabel(): string
     {
+        $role = $this->roleModel();
+        if ($role) {
+            return (string) $role->label;
+        }
+
         $label = config('access.roles.' . $this->roleKey() . '.label');
 
         return is_string($label) ? $label : 'Usuario';
@@ -88,9 +107,16 @@ class User extends Authenticatable
      */
     public function permissions(): array
     {
-        $permissions = config('access.role_permissions.' . $this->roleKey(), []);
+        $role = $this->roleModel();
+        $rolePerms = $role
+            ? (array) $role->permissions
+            : (array) config('access.role_permissions.' . $this->roleKey(), []);
 
-        return array_values(array_unique(array_map('strval', $permissions)));
+        $extras = (array) ($this->extra_permissions ?? []);
+
+        $merged = array_merge($rolePerms, $extras);
+
+        return array_values(array_unique(array_map('strval', $merged)));
     }
 
     public function hasPermission(string $permission): bool
@@ -102,11 +128,21 @@ class User extends Authenticatable
 
     public function canSwitchBranch(): bool
     {
+        $role = $this->roleModel();
+        if ($role) {
+            return (bool) $role->can_switch_branch;
+        }
+
         return (bool) config('access.roles.' . $this->roleKey() . '.can_switch_branch', false);
     }
 
     public function defaultHomeRoute(): string
     {
+        $role = $this->roleModel();
+        if ($role) {
+            return (string) ($role->default_home ?: '/admin');
+        }
+
         $route = config('access.roles.' . $this->roleKey() . '.default_home', '/admin');
 
         return is_string($route) ? $route : '/admin';
@@ -117,6 +153,11 @@ class User extends Authenticatable
      */
     public static function availableRoles(): array
     {
+        $dbRoles = Role::pluck('key')->all();
+        if (! empty($dbRoles)) {
+            return $dbRoles;
+        }
+
         return array_keys(config('access.roles', []));
     }
 }

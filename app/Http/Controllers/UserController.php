@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,29 +15,28 @@ class UserController extends Controller
     public function index(): Response
     {
         $users = User::query()
-            ->select(['id', 'name', 'username', 'email', 'role', 'created_at'])
+            ->select(['id', 'name', 'username', 'email', 'role', 'extra_permissions', 'created_at'])
             ->selectRaw('pin IS NOT NULL as has_pin')
             ->orderBy('name')
             ->get()
             ->map(fn (User $user) => [
-                'id'         => $user->id,
-                'name'       => $user->name,
-                'username'   => $user->username,
-                'email'      => $user->email,
-                'role'       => $user->roleKey(),
-                'role_label' => $user->roleLabel(),
-                'has_pin'    => (bool) $user->has_pin,
-                'created_at' => $user->created_at?->toDateString(),
+                'id'                => $user->id,
+                'name'              => $user->name,
+                'username'          => $user->username,
+                'email'             => $user->email,
+                'role'              => $user->roleKey(),
+                'role_label'        => $user->roleLabel(),
+                'extra_permissions' => (array) ($user->extra_permissions ?? []),
+                'has_pin'           => (bool) $user->has_pin,
+                'created_at'        => $user->created_at?->toDateString(),
             ]);
 
-        $allRoles   = User::availableRoles();
-        $allPerms   = config('access.permissions', []);
-        $rolePerms  = config('access.role_permissions', []);
+        $allPerms = config('access.permissions', []);
 
-        $roles = collect($allRoles)->map(fn (string $role) => [
-            'key'         => $role,
-            'label'       => (string) config("access.roles.{$role}.label", $role),
-            'permissions' => $rolePerms[$role] ?? [],
+        $roles = Role::orderBy('id')->get()->map(fn (Role $role) => [
+            'key'         => $role->key,
+            'label'       => $role->label,
+            'permissions' => (array) $role->permissions,
         ])->values();
 
         // Group permissions by module (prefix before the dot)
@@ -58,14 +58,20 @@ class UserController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $allPerms = config('access.permissions', []);
+
         $data = $request->validate([
-            'name'     => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:255', 'unique:users,username'],
-            'email'    => ['required', 'email', 'max:255', 'unique:users,email'],
-            'role'     => ['required', Rule::in(User::availableRoles())],
-            'password' => ['required', 'string', 'min:4'],
-            'pin'      => ['nullable', 'string', 'min:4', 'max:10'],
+            'name'                => ['required', 'string', 'max:255'],
+            'username'            => ['required', 'string', 'max:255', 'unique:users,username'],
+            'email'               => ['required', 'email', 'max:255', 'unique:users,email'],
+            'role'                => ['required', Rule::in(User::availableRoles())],
+            'password'            => ['required', 'string', 'min:4'],
+            'pin'                 => ['nullable', 'string', 'min:4', 'max:10'],
+            'extra_permissions'   => ['nullable', 'array'],
+            'extra_permissions.*' => ['string', Rule::in($allPerms)],
         ]);
+
+        $data['extra_permissions'] = array_values(array_unique($data['extra_permissions'] ?? []));
 
         User::create($data);
 
@@ -74,13 +80,17 @@ class UserController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
+        $allPerms = config('access.permissions', []);
+
         $data = $request->validate([
-            'name'     => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')->ignore($user->id)],
-            'email'    => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'role'     => ['required', Rule::in(User::availableRoles())],
-            'password' => ['nullable', 'string', 'min:4'],
-            'pin'      => ['nullable', 'string', 'min:4', 'max:10'],
+            'name'                => ['required', 'string', 'max:255'],
+            'username'            => ['required', 'string', 'max:255', Rule::unique('users', 'username')->ignore($user->id)],
+            'email'               => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'role'                => ['required', Rule::in(User::availableRoles())],
+            'password'            => ['nullable', 'string', 'min:4'],
+            'pin'                 => ['nullable', 'string', 'min:4', 'max:10'],
+            'extra_permissions'   => ['nullable', 'array'],
+            'extra_permissions.*' => ['string', Rule::in($allPerms)],
         ]);
 
         $update = collect($data)->filter(function ($value, $key) {
@@ -93,6 +103,8 @@ class UserController extends Controller
         if (array_key_exists('pin', $data) && ($data['pin'] === null || $data['pin'] === '')) {
             $update['pin'] = null;
         }
+
+        $update['extra_permissions'] = array_values(array_unique($data['extra_permissions'] ?? []));
 
         $user->update($update);
 

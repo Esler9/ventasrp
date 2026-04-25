@@ -14,6 +14,10 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    <Link :href="homeRoute" class="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-800/80 px-4 text-sm font-semibold text-slate-200 hover:bg-slate-700/80" title="Volver al menú">
+                        <i class="fa-solid fa-house"></i>
+                        <span class="hidden sm:inline">Menú</span>
+                    </Link>
                     <button type="button" class="relative flex h-11 w-11 items-center justify-center rounded-full bg-slate-800/80 text-slate-300">
                         <i class="fa-solid fa-bell"></i>
                         <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500"></span>
@@ -595,7 +599,7 @@
 <script setup>
 import axios from 'axios';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { router, useForm, usePage } from '@inertiajs/vue3';
+import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import BottomNav from '../../Components/BottomNav.vue';
 import FlashBanner from '../../Components/FlashBanner.vue';
 import GlobalLoader from '../../Components/GlobalLoader.vue';
@@ -615,6 +619,7 @@ const props = defineProps({
 
 const { theme, toggleTheme } = useTheme();
 const page = usePage();
+const homeRoute = computed(() => page.props.auth?.user?.home || '/admin');
 const search = ref(props.filters.q || '');
 const products = ref(props.products);
 const selectedCategoryId = ref(props.selected_category_id > 0 ? props.selected_category_id : null);

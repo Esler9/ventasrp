@@ -14,6 +14,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\RestaurantPosController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -107,6 +108,8 @@ Route::prefix('admin')->middleware(['web', 'auth'])->group(function () {
     Route::post('/users', [UserController::class, 'store'])->middleware('permission:users.manage')->name('admin.users.store');
     Route::match(['put', 'patch', 'post'], '/users/{user}', [UserController::class, 'update'])->middleware('permission:users.manage')->name('admin.users.update');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('permission:users.manage')->name('admin.users.destroy');
+
+    Route::match(['put', 'patch', 'post'], '/roles/{role}', [RoleController::class, 'update'])->middleware('permission:users.manage')->name('admin.roles.update');
 
     Route::get('/settings', [SettingsController::class, 'index'])->middleware('permission:settings.view')->name('admin.settings.index');
     Route::post('/settings', [SettingsController::class, 'update'])->middleware('permission:settings.update')->name('admin.settings.update');
